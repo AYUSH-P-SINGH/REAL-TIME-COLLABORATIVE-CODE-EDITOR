@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;600;700&display=swap');
+
+:root {
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'Fira Code', monospace;
+
+  /* Premium Space Theme HSL Variables */
+  --bg-deep: 220 25% 6%;
+  --bg-surface: 220 25% 10%;
+  --bg-glass: 220 25% 12% / 0.65;
+  
+  --border-glow: 220 50% 25% / 0.35;
+  --border-active: 190 80% 50% / 0.45;
+  
+  --accent-cyan: 190 90% 50%;
+  --accent-purple: 270 90% 60%;
+  --accent-pink: 320 90% 55%;
+  
+  --text-primary: 0 0% 98%;
+  --text-secondary: 220 15% 72%;
+  --text-muted: 220 10% 48%;
+  
+  --glow-cyan: 0 0 15px hsl(var(--accent-cyan) / 0.25);
+  --glow-purple: 0 0 15px hsl(var(--accent-purple) / 0.25);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: hsl(var(--bg-deep));
+  color: hsl(var(--text-primary));
+  font-family: var(--font-sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: hsl(var(--bg-glass));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsl(var(--border-glow));
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+.glass-panel-hover:hover {
+  border-color: hsl(var(--accent-cyan) / 0.3);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), var(--glow-cyan);
+  transition: all 0.3s ease;
+}
+
+.input-field {
+  background: hsl(var(--bg-surface));
+  border: 1px solid hsl(var(--border-glow));
+  color: hsl(var(--text-primary));
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: hsl(var(--accent-cyan));
+  box-shadow: var(--glow-cyan);
+}
+
+.neon-btn {
+  background: linear-gradient(135deg, hsl(var(--accent-cyan)), hsl(var(--accent-purple)));
+  border: none;
+  color: #000;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.neon-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px hsl(var(--accent-cyan) / 0.4);
+}
+
+.neon-btn:active {
+  transform: translateY(0);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--bg-deep));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--bg-surface));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--text-muted));
+}
