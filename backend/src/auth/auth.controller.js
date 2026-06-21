@@ -12,6 +12,7 @@ const register = async (req, res, next) => {
     next(error);
   }
 };
+//login
 
 const login = async (req, res, next) => {
   try {
