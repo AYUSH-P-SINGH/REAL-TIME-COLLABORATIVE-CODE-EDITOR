@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/collab-db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=supersecretjwtkeythatisatleast32characterslong
+      - JWT_EXPIRES_IN=7d
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - collab-net
+
+  mongo:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - collab-net
+
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - collab-net
+
+networks:
+  collab-net:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  redis-data:
