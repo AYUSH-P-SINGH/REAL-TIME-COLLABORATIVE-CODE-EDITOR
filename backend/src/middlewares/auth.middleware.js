@@ -17,7 +17,7 @@ const protect = (req, res, next) => {
     next();
   } catch (error) {
     return res.status(401).json({ success: false, message: 'Not authorized, token failed' });
-  }e
+  }
 };
 
 module.exports = { protect };

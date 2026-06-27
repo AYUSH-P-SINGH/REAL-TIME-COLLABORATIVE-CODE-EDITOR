@@ -1,13 +1,13 @@
 // Rate Limiting Middleware
 const rateLimit = require('express-rate-limit');
-const RedisStore = require('rate-limit-redis');
+const RedisStore = require('rate-limit-redis').default;
 const { cacheClient } = require('../config/redis');
 const logger = require('../utils/logger');
 
 // General API limiter: 100 requests per 15 minutes
 const apiLimiter = rateLimit({
-  store: new RedisStore({
-    client: cacheClient,
+  store: process.env.NODE_ENV === 'test' ? undefined : new RedisStore({
+    sendCommand: (...args) => cacheClient.sendCommand(args),
     prefix: 'rl:api:',
   }),
   windowMs: 15 * 60 * 1000,
@@ -30,8 +30,8 @@ const apiLimiter = rateLimit({
 
 // Auth limiter: 5 attempts per 15 minutes
 const authLimiter = rateLimit({
-  store: new RedisStore({
-    client: cacheClient,
+  store: process.env.NODE_ENV === 'test' ? undefined : new RedisStore({
+    sendCommand: (...args) => cacheClient.sendCommand(args),
     prefix: 'rl:auth:',
   }),
   windowMs: 15 * 60 * 1000,
@@ -54,8 +54,8 @@ const authLimiter = rateLimit({
 
 // File operations limiter: 50 requests per 15 minutes
 const fileLimiter = rateLimit({
-  store: new RedisStore({
-    client: cacheClient,
+  store: process.env.NODE_ENV === 'test' ? undefined : new RedisStore({
+    sendCommand: (...args) => cacheClient.sendCommand(args),
     prefix: 'rl:file:',
   }),
   windowMs: 15 * 60 * 1000,

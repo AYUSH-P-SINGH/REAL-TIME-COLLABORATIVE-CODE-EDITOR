@@ -49,6 +49,8 @@ const EditorHeader = ({ fileName, fileLanguage, editorTheme, setEditorTheme }) =
           >
             <option value="vs-dark">Dark</option>
             <option value="light">Light</option>
+            <option value="cyberpunk">⚡ Cyberpunk</option>
+            <option value="synthwave">🌌 Synthwave</option>
           </select>
         </div>
 

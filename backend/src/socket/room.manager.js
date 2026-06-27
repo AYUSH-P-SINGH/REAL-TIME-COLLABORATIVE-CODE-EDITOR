@@ -68,6 +68,10 @@ const handleRoomEvents = (socket) => {
       logger.error('Error handling code edit:', err);
     }
   });
+
+  socket.on('workspace:theme', ({ fileId, theme }) => {
+    socket.to(fileId).emit('workspace:theme', { theme });
+  });
 };
 
 module.exports = { handleRoomEvents };

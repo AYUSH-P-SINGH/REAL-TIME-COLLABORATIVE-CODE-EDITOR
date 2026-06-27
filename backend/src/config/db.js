@@ -12,4 +12,13 @@ const connectDB = async () => {
   }
 };
 
-module.exports = connectDB;
+const closeDB = async () => {
+  try {
+    await mongoose.connection.close();
+    logger.info('💾 MongoDB connection closed.');
+  } catch (error) {
+    logger.error(`❌ DB Close Error: ${error.message}`);
+  }
+};
+
+module.exports = { connectDB, closeDB };

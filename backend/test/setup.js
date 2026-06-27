@@ -1,7 +1,7 @@
 // Backend Test Setup & Configuration
 const request = require('supertest');
-const app = require('../app');
-const { connectDB, closeDB } = require('../config/db');
+const app = require('../src/app');
+const { connectDB, closeDB } = require('../src/config/db');
 
 
 beforeAll(async () => {

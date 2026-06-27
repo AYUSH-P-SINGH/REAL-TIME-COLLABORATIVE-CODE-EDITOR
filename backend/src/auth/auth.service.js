@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const userService = require('../users/user.service');
+const userService = require('../user/user.service');
 const jwtHelper = require('../utils/jwt');
 
 const register = async (name, email, password) => {

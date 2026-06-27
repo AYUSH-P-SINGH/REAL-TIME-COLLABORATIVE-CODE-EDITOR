@@ -1,13 +1,10 @@
 const http = require('http');
-const app = require('./app');
 const env = require('./config/env');
-const connectDB = require('./config/db');
+const { connectDB } = require('./config/db');
 const { connectRedis } = require('./config/redis');
 const { setupSockets } = require('./socket');
 const { startSnapshotWorker } = require('./sync/snapshot.service');
 const logger = require('./utils/logger');
-
-const server = http.createServer(app);
 
 const startServer = async () => {
   // 1. Establish database connection
@@ -15,6 +12,10 @@ const startServer = async () => {
   
   // 2. Connect to Redis Clients
   await connectRedis();
+
+  // Load app after Redis is connected so rate limiters can initialize their RedisStore
+  const app = require('./app');
+  const server = http.createServer(app);
   
   // 3. Initialize WebSocket coordination
   setupSockets(server);

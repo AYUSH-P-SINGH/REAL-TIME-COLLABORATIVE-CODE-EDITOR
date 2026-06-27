@@ -1,5 +1,5 @@
 const express = require('express');
-const routes = require('./routes');
+const { setupVersioning } = require('./config/versioning');
 const errorHandler = require('./middlewares/error.middleware');
 const { setupSecurityMiddleware } = require('./config/security');
 const { apiLimiter, authLimiter, fileLimiter } = require('./middlewares/rateLimit.advanced');
@@ -31,7 +31,7 @@ app.get('/health', (req, res) => {
 });
 
 // Master Routing Gateway
-app.use('/api', routes);
+setupVersioning(app);
 
 // 404 handler
 app.use((req, res) => {

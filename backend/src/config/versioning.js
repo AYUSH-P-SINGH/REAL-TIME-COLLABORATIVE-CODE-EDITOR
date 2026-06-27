@@ -19,6 +19,8 @@ routerV1.get('/status', (req, res) => {
 });
 
 // V2 routes (current)
+const routes = require('../route');
+
 routerV2.get('/status', (req, res) => {
   res.json({
     version: 'v2',
@@ -26,6 +28,8 @@ routerV2.get('/status', (req, res) => {
     features: ['enhanced-validation', 'better-errors', 'audit-logs'],
   });
 });
+
+routerV2.use('/', routes);
 
 // Support both /api/v1 and /api/v2 prefixes
 const setupVersioning = (app) => {

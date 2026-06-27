@@ -5,8 +5,9 @@ import Navbar from '../components/Navigation/Navbar';
 import FileExplorer from '../components/FileTree/FileExplorer';
 import CodeEditor from '../components/Editor/CodeEditor';
 import AvatarGroup from '../components/Shared/AvatarGroup';
-import { ArrowLeft, UserPlus } from 'lucide-react';
+import { ArrowLeft, UserPlus, Activity } from 'lucide-react';
 import GlassCard from '../components/Shared/GlassCard';
+import { useSocket } from '../context/SocketContext';
 
 const Workspace = () => {
   const { projectId } = useParams();
@@ -17,6 +18,72 @@ const Workspace = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   
   const navigate = useNavigate();
+  const { socket } = useSocket();
+  const [activityLog, setActivityLog] = useState([]);
+  const [showActivityLog, setShowActivityLog] = useState(true);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePresenceUpdate = ({ userName, action }) => {
+      const time = new Date().toLocaleTimeString();
+      setActivityLog(prev => [
+        {
+          id: Date.now() + Math.random(),
+          text: `${userName} has ${action === 'join' ? 'entered' : 'left'} the workspace.`,
+          time,
+          type: 'presence'
+        },
+        ...prev.slice(0, 49)
+      ]);
+    };
+
+    const handleCodeEdit = ({ senderId, change }) => {
+      if (change && change.patch) {
+        const time = new Date().toLocaleTimeString();
+        setActivityLog(prev => {
+          const lastLog = prev[0];
+          // Throttle identical edit activity logs
+          if (lastLog && lastLog.type === 'edit' && lastLog.senderId === senderId) {
+            return prev;
+          }
+          return [
+            {
+              id: Date.now() + Math.random(),
+              text: `Collaborator updated document changes.`,
+              time,
+              type: 'edit',
+              senderId
+            },
+            ...prev.slice(0, 49)
+          ];
+        });
+      }
+    };
+
+    const handleThemeSync = ({ theme }) => {
+      const time = new Date().toLocaleTimeString();
+      setActivityLog(prev => [
+        {
+          id: Date.now() + Math.random(),
+          text: `Workspace theme changed to: ${theme}`,
+          time,
+          type: 'theme'
+        },
+        ...prev.slice(0, 49)
+      ]);
+    };
+
+    socket.on('presence:update', handlePresenceUpdate);
+    socket.on('code:edit', handleCodeEdit);
+    socket.on('workspace:theme', handleThemeSync);
+
+    return () => {
+      socket.off('presence:update', handlePresenceUpdate);
+      socket.off('code:edit', handleCodeEdit);
+      socket.off('workspace:theme', handleThemeSync);
+    };
+  }, [socket]);
 
   const fetchProjectDetails = async () => {
     try {
@@ -91,6 +158,29 @@ const Workspace = () => {
             <UserPlus size={14} />
             Invite
           </button>
+
+          <button
+            onClick={() => setShowActivityLog(prev => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: showActivityLog ? 'rgba(34, 211, 238, 0.15)' : '#1a2233',
+              border: showActivityLog ? '1px solid #22d3ee' : '1px solid #2d3b55',
+              color: showActivityLog ? '#22d3ee' : '#fff',
+              fontSize: '0.8rem',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = showActivityLog ? 'rgba(34, 211, 238, 0.25)' : '#25314a' }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = showActivityLog ? 'rgba(34, 211, 238, 0.15)' : '#1a2233' }}
+          >
+            <Activity size={14} />
+            Activity Log
+          </button>
         </div>
       </Navbar>
 
@@ -143,7 +233,7 @@ const Workspace = () => {
         </div>
 
         {/* Right pane: Monaco workspace */}
-        <div style={{ flex: 1, height: '100%', minWidth: 0 }}>
+        <div style={{ flex: 1, height: '100%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           {activeFile ? (
             <CodeEditor 
               fileId={activeFile.id} 
@@ -164,6 +254,79 @@ const Workspace = () => {
               <span style={{ fontSize: '0.85rem' }}>Select a file from the explorer sidebar to begin coding</span>
             </div>
           )}
+        </div>
+
+        {/* Activity Log Side-Panel */}
+        <div className="glass-panel" style={{
+          width: showActivityLog ? '280px' : '0px',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          flexShrink: 0,
+          borderLeft: showActivityLog ? '1px solid #2d3b55' : 'none',
+          opacity: showActivityLog ? 1 : 0
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            borderBottom: '1px solid #1c2638',
+            backgroundColor: '#0f131c'
+          }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>Activity Log</span>
+            <button 
+              onClick={() => setShowActivityLog(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#8f9cae',
+                cursor: 'pointer',
+                fontSize: '0.75rem'
+              }}
+            >
+              Close
+            </button>
+          </div>
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}>
+            {activityLog.length === 0 ? (
+              <div style={{ fontSize: '0.75rem', color: '#526685', textAlign: 'center', marginTop: '16px' }}>
+                No workspace activities recorded yet.
+              </div>
+            ) : (
+              activityLog.map((log) => (
+                <div key={log.id} style={{
+                  padding: '8px 10px',
+                  backgroundColor: '#0a0d16',
+                  border: '1px solid #172033',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  color: '#b2c0d2',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  animation: 'slideIn 0.2s ease-out'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#fff', fontWeight: '600' }}>
+                      {log.type === 'presence' ? '👥 Presence' : log.type === 'edit' ? '📝 Edit' : '⚙️ System'}
+                    </span>
+                    <span style={{ fontSize: '0.65rem', color: '#526685' }}>{log.time}</span>
+                  </div>
+                  <span>{log.text}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
