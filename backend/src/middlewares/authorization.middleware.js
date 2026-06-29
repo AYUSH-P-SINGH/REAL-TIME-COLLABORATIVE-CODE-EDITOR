@@ -1,9 +1,7 @@
-// Authorization Middleware
+
 const logger = require('../utils/logger');
 const Project = require('../projects/project.model');
 const File = require('../files/file.model');
-
-// Check if user owns the project
 const checkProjectOwnership = async (req, res, next) => {
   try {
     const { projectId } = req.params;
@@ -16,8 +14,6 @@ const checkProjectOwnership = async (req, res, next) => {
         message: 'Project not found',
       });
     }
-
-    // Check if user is owner or collaborator
     const isOwner = project.owner.toString() === userId;
     const isCollaborator = project.collaborators.some(
       (collab) => collab.toString() === userId
@@ -30,8 +26,6 @@ const checkProjectOwnership = async (req, res, next) => {
         message: 'You do not have permission to access this project',
       });
     }
-
-    // Attach project to request for later use
     req.project = project;
     req.isOwner = isOwner;
     next();
@@ -43,8 +37,6 @@ const checkProjectOwnership = async (req, res, next) => {
     });
   }
 };
-
-// Check if user owns the file
 const checkFileAccess = async (req, res, next) => {
   try {
     const { fileId } = req.params;
@@ -83,8 +75,6 @@ const checkFileAccess = async (req, res, next) => {
     });
   }
 };
-
-// Check if user is project owner (for modifications)
 const checkProjectOwnerOnly = async (req, res, next) => {
   try {
     const { projectId } = req.params;
