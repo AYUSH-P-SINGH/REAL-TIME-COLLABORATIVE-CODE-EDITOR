@@ -21,7 +21,7 @@ const initSentry = (app) => {
       new Sentry.Integrations.OnUncaughtException(),
       new Sentry.Integrations.OnUnhandledRejection(),
     ],
-    beforeSend(event, hint) {
+    beforeSend(event, _hint) {
       // Don't send 404 errors to Sentry
       if (event.request?.url?.includes('/health')) {
         return null;

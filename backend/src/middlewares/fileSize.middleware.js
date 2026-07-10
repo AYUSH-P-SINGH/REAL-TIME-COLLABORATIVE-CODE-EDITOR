@@ -7,7 +7,7 @@ const MAX_PROJECT_TOTAL_SIZE = 500 * 1024 * 1024; // 500MB per project
 const checkFileSize = (req, res, next) => {
   try {
     const contentLength = req.headers['content-length'];
-    
+
     if (!contentLength) {
       return next();
     }

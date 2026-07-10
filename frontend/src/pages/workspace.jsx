@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../services/api';
-import Navbar from '../components/Navigation/Navbar';
+import Navbar from '../components/navigation/navbar';
 import FileExplorer from '../components/FileTree/FileExplorer';
-import CodeEditor from '../components/Editor/CodeEditor';
+import CodeEditor from '../components/editor/codeeditor';
 import AvatarGroup from '../components/Shared/AvatarGroup';
 import { ArrowLeft, UserPlus, Activity } from 'lucide-react';
 import GlassCard from '../components/Shared/GlassCard';
 import { useSocket } from '../context/SocketContext';
+import { useToast } from '../context/ToastContext';
 
 const Workspace = () => {
   const { projectId } = useParams();
@@ -19,6 +20,7 @@ const Workspace = () => {
   
   const navigate = useNavigate();
   const { socket } = useSocket();
+  const { addToast } = useToast();
   const [activityLog, setActivityLog] = useState([]);
   const [showActivityLog, setShowActivityLog] = useState(true);
 
@@ -85,7 +87,7 @@ const Workspace = () => {
     };
   }, [socket]);
 
-  const fetchProjectDetails = async () => {
+  const fetchProjectDetails = useCallback(async () => {
     try {
       const res = await API.get(`/projects/${projectId}`);
       if (res.data.success) {
@@ -95,13 +97,13 @@ const Workspace = () => {
       console.error('Failed to load project details:', err);
       navigate('/dashboard');
     }
-  };
+  }, [projectId, navigate]);
 
   useEffect(() => {
     if (projectId) {
       fetchProjectDetails();
     }
-  }, [projectId]);
+  }, [projectId, fetchProjectDetails]);
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -110,13 +112,13 @@ const Workspace = () => {
     try {
       const res = await API.post(`/projects/${projectId}/invite`, { email: inviteEmail });
       if (res.data.success) {
-        alert('Collaborator added successfully!');
+        addToast('Collaborator added successfully!', 'success');
         setInviteEmail('');
         setShowInviteModal(false);
         fetchProjectDetails();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to add collaborator');
+      addToast(err.response?.data?.message || 'Failed to add collaborator', 'error');
     }
   };
 

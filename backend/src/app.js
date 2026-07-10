@@ -4,7 +4,7 @@ const errorHandler = require('./middlewares/error.middleware');
 const { setupSecurityMiddleware } = require('./config/security');
 const { apiLimiter, authLimiter, fileLimiter } = require('./middlewares/rateLimit.advanced');
 const { checkFileSize } = require('./middlewares/fileSize.middleware');
-const { initSentry, captureException } = require('./utils/sentry.config');
+const { initSentry } = require('./utils/sentry.config');
 
 const app = express();
 

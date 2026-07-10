@@ -1,12 +1,16 @@
 const bcrypt = require('bcryptjs');
 const userService = require('../user/user.service');
 const jwtHelper = require('../utils/jwt');
+const { registerSchema, loginSchema } = require('../utils/validation.schemas');
 
 const register = async (name, email, password) => {
+  // Validate schemas at service level to protect against internal programmatic creation issues
+  registerSchema.parse({ name, email, password });
+
   const existingUser = await userService.findByEmail(email);
   if (existingUser) {
     const err = new Error('User already exists');
-    err.statusCode = 400;
+    err.statusCode = 409;
     throw err;
   }
 
@@ -34,6 +38,9 @@ const register = async (name, email, password) => {
 };
 
 const login = async (email, password) => {
+  // Validate schemas at service level
+  loginSchema.parse({ email, password });
+
   const user = await userService.findByEmail(email);
   if (!user) {
     const err = new Error('Invalid credentials');

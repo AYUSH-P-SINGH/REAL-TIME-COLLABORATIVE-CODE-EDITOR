@@ -8,15 +8,15 @@ const handleRoomEvents = (socket) => {
     try {
       socket.join(fileId);
       logger.info(`👥 User ${socket.user.id} joined room (fileId): ${fileId}`);
-      
+
       const document = await docManager.getOrCreateDocument(fileId);
-      
+
       socket.emit(events.CODE_SYNC, {
         fileId,
         content: document.content,
         version: document.version
       });
-      
+
       socket.to(fileId).emit(events.PRESENCE_UPDATE, {
         userId: socket.user.id,
         action: 'join',

@@ -46,7 +46,7 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
           // Diff between last sync copy and our current offline copy
           const offlinePatches = dmp.patch_make(lastSyncedContentRef.current, currentVal);
           // Apply our offline changes onto the new server copy
-          const [mergedVal, results] = dmp.patch_apply(offlinePatches, content);
+          const [mergedVal] = dmp.patch_apply(offlinePatches, content);
           
           isApplyingRemoteChange.current = true;
           editor.setValue(mergedVal);

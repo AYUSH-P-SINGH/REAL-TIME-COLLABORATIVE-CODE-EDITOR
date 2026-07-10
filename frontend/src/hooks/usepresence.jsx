@@ -25,7 +25,7 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
       }));
     });
 
-    socket.on('presence:update', ({ userId, action, userName }) => {
+    socket.on('presence:update', ({ userId, action, _userName }) => {
       if (action === 'leave') {
         setPeers(prev => {
           const clone = { ...prev };
@@ -52,9 +52,9 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
       disposable.dispose();
       
       // Clean up decorations on unmount
-      if (editorRef.current && decorationsRef.current.length > 0) {
+      if (editor && decorationsRef.current.length > 0) {
         try {
-          editorRef.current.deltaDecorations(decorationsRef.current, []);
+          editor.deltaDecorations(decorationsRef.current, []);
         } catch (e) {
           // Editor might be disposed already
         }

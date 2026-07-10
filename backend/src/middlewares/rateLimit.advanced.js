@@ -15,7 +15,7 @@ const apiLimiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: (_req) => {
     return process.env.NODE_ENV === 'test';
   },
   handler: (req, res) => {
@@ -39,7 +39,7 @@ const authLimiter = rateLimit({
   message: 'Too many login attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: (_req) => {
     return process.env.NODE_ENV === 'test';
   },
   handler: (req, res) => {
@@ -62,7 +62,7 @@ const fileLimiter = rateLimit({
   max: 50,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: (_req) => {
     return process.env.NODE_ENV === 'test';
   },
 });

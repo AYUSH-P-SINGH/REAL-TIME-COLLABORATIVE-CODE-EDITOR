@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import API from '../../services/api';
 import FileNode from './FileNode';
 import { Plus, FolderPlus, FileCode } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 const FileExplorer = ({ projectId, onFileSelect }) => {
+  const { addToast } = useToast();
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInput, setShowInput] = useState(null); // 'file' | 'directory' | null
   const [newItemName, setNewItemName] = useState('');
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
       const res = await API.get(`/files?projectId=${projectId}`);
       if (res.data.success) {
@@ -20,11 +22,11 @@ const FileExplorer = ({ projectId, onFileSelect }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     if (projectId) fetchFiles();
-  }, [projectId]);
+  }, [projectId, fetchFiles]);
 
   // Construct a nested tree hierarchy from list of flat files
   const buildTree = (flatFiles) => {
@@ -70,12 +72,13 @@ const FileExplorer = ({ projectId, onFileSelect }) => {
       });
 
       if (res.data.success) {
+        addToast(`${showInput === 'file' ? 'File' : 'Folder'} created successfully!`, 'success');
         fetchFiles();
         setNewItemName('');
         setShowInput(null);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error creating workspace item');
+      addToast(err.response?.data?.message || 'Error creating workspace item', 'error');
     }
   };
 
@@ -85,10 +88,11 @@ const FileExplorer = ({ projectId, onFileSelect }) => {
     try {
       const res = await API.delete(`/files/${node._id}`);
       if (res.data.success) {
+        addToast('Item deleted successfully!', 'success');
         fetchFiles();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error deleting workspace item');
+      addToast(err.response?.data?.message || 'Error deleting workspace item', 'error');
     }
   };
 

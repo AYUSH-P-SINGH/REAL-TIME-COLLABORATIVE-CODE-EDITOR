@@ -1,20 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
-import Navbar from '../components/Navigation/Navbar';
+import Navbar from '../components/navigation/navbar';
 import GlassCard from '../components/Shared/GlassCard';
 import NeonButton from '../components/Shared/NeonButton';
-import { FolderCode, Plus, Users, Calendar } from 'lucide-react';
+import { Folder, Plus, Users, Calendar } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Dashboard = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   
+  const navigate = useNavigate();
+  const { addToast } = useToast();
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-
-  const navigate = useNavigate();
 
   const fetchProjects = async () => {
     try {
@@ -40,13 +42,14 @@ const Dashboard = () => {
     try {
       const res = await API.post('/projects', { name, description });
       if (res.data.success) {
+        addToast('Project created successfully!', 'success');
         setShowModal(false);
         setName('');
         setDescription('');
         fetchProjects();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create project');
+      addToast(err.response?.data?.message || 'Failed to create project', 'error');
     }
   };
 
@@ -107,7 +110,7 @@ const Dashboard = () => {
             borderRadius: '12px',
             border: '1px solid #1a2233'
           }}>
-            <FolderCode size={48} color="#8f9cae" style={{ marginBottom: '16px', opacity: 0.5 }} />
+            <Folder size={48} color="#8f9cae" style={{ marginBottom: '16px', opacity: 0.5 }} />
             <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>
               No projects yet
             </h3>

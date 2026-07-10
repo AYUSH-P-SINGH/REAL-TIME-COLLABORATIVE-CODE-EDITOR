@@ -1,7 +1,9 @@
 import React from 'react';
 import { Share2, Monitor, Code } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 const EditorHeader = ({ fileName, fileLanguage, editorTheme, setEditorTheme }) => {
+  const { addToast } = useToast();
   return (
     <div style={{
       display: 'flex',
@@ -57,7 +59,7 @@ const EditorHeader = ({ fileName, fileLanguage, editorTheme, setEditorTheme }) =
         <button
           onClick={() => {
             navigator.clipboard.writeText(window.location.href);
-            alert('Workspace sharing link copied to clipboard!');
+            addToast('Workspace sharing link copied to clipboard!', 'success');
           }}
           style={{
             display: 'flex',

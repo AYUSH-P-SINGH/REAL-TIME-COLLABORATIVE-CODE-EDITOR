@@ -1,10 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/authcontext';
 import { SocketProvider } from './context/SocketContext';
-import Landing from './pages/Landing';
-import Dashboard from './pages/Dashboard';
-import Workspace from './pages/Workspace';
+import { ToastProvider } from './context/ToastContext';
+import Landing from './pages/landing';
+import Dashboard from './pages/dashboard';
+import Workspace from './pages/workspace';
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useAuth();
@@ -39,13 +40,17 @@ function AppRoutes() {
   );
 }
 
+
+
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <SocketProvider>
-          <AppRoutes />
-        </SocketProvider>
+        <ToastProvider>
+          <SocketProvider>
+            <AppRoutes />
+          </SocketProvider>
+        </ToastProvider>
       </AuthProvider>
     </Router>
   );

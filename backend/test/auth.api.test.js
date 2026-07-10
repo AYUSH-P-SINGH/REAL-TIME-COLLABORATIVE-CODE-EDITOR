@@ -15,7 +15,7 @@ describe('Authentication API Endpoints', () => {
         .send({
           name: 'Test User',
           email: 'test@example.com',
-          password: 'SecurePass123'
+          password: 'SecurePass123!'
         });
 
       expect(response.status).toBe(201);
@@ -30,7 +30,7 @@ describe('Authentication API Endpoints', () => {
         .send({
           name: 'Test User',
           email: 'invalid-email',
-          password: 'SecurePass123'
+          password: 'SecurePass123!'
         });
 
       expect(response.status).toBe(400);
@@ -56,7 +56,7 @@ describe('Authentication API Endpoints', () => {
         .send({
           name: 'Test User',
           email: 'test@example.com',
-          password: 'SecurePass123'
+          password: 'SecurePass123!'
         });
 
       const response = await request(app)
@@ -64,7 +64,7 @@ describe('Authentication API Endpoints', () => {
         .send({
           name: 'Another User',
           email: 'test@example.com',
-          password: 'AnotherPass123'
+          password: 'AnotherPass123!'
         });
 
       expect(response.status).toBe(409);
@@ -79,7 +79,7 @@ describe('Authentication API Endpoints', () => {
         .send({
           name: 'Test User',
           email: 'test@example.com',
-          password: 'SecurePass123'
+          password: 'SecurePass123!'
         });
     });
 
@@ -88,7 +88,7 @@ describe('Authentication API Endpoints', () => {
         .post('/api/auth/login')
         .send({
           email: 'test@example.com',
-          password: 'SecurePass123'
+          password: 'SecurePass123!'
         });
 
       expect(response.status).toBe(200);
@@ -113,7 +113,7 @@ describe('Authentication API Endpoints', () => {
         .post('/api/auth/login')
         .send({
           email: 'nonexistent@example.com',
-          password: 'SecurePass123'
+          password: 'SecurePass123!'
         });
 
       expect(response.status).toBe(401);

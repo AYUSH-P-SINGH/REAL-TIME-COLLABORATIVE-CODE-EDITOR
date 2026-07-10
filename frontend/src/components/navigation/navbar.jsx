@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/authcontext';
 import { useSocket } from '../../context/SocketContext';
 import { LogOut, Wifi, WifiOff } from 'lucide-react';
 
@@ -26,7 +26,7 @@ const Navbar = ({ children }) => {
           WebkitTextFillColor: 'transparent',
           letterSpacing: '0.5px'
         }}>
-          Syntaxis
+          CodeSync
         </h1>
         <div style={{
           display: 'flex',

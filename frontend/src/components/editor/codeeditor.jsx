@@ -3,7 +3,7 @@ import MonacoEditor from '@monaco-editor/react';
 import { useDocSync } from '../../hooks/useDocSync';
 import { usePresence } from '../../hooks/usepresence';
 import { useSocket } from '../../context/SocketContext';
-import EditorHeader from './EditorHeader';
+import EditorHeader from './editorheader';
 
 const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
   const editorRef = useRef(null);

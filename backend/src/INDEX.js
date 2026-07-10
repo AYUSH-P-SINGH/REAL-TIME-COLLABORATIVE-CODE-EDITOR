@@ -9,17 +9,17 @@ const logger = require('./utils/logger');
 const startServer = async () => {
   // 1. Establish database connection
   await connectDB();
-  
+
   // 2. Connect to Redis Clients
   await connectRedis();
 
   // Load app after Redis is connected so rate limiters can initialize their RedisStore
   const app = require('./app');
   const server = http.createServer(app);
-  
+
   // 3. Initialize WebSocket coordination
   setupSockets(server);
-  
+
   // 4. Start background Snapshot Worker
   startSnapshotWorker();
 

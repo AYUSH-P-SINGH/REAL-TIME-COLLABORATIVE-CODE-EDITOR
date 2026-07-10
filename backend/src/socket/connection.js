@@ -9,7 +9,7 @@ const authenticateSocket = (socket, next) => {
   if (!token) {
     return next(new Error('Authentication failed: Token missing'));
   }
-  
+
   try {
     const decoded = jwt.verifyToken(token.replace('Bearer ', ''));
     socket.user = decoded; // Attach user payload to socket
@@ -24,11 +24,11 @@ const registerSocketHandlers = (io) => {
 
   io.on(events.CONNECTION, (socket) => {
     logger.info(`🔌 Socket connected: ${socket.id} (User: ${socket.user.name})`);
-    
+
     // Register event sub-modules
     roomManager.handleRoomEvents(socket);
     presence.handlePresenceEvents(socket);
-    
+
     socket.on(events.DISCONNECT, async (reason) => {
       logger.info(`🔌 Socket disconnected: ${socket.id} (Reason: ${reason})`);
       await presence.cleanupUser(socket);

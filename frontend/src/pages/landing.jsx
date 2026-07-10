@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authcontext';
 import API from '../services/api';
 import GlassCard from '../components/Shared/GlassCard';
 import NeonButton from '../components/Shared/NeonButton';
+import { useToast } from '../context/ToastContext';
 
 const Landing = () => {
   const { loginSession } = useAuth();
+  const { addToast } = useToast();
   const [isRegister, setIsRegister] = useState(false);
   
   const [name, setName] = useState('');
@@ -27,10 +29,13 @@ const Landing = () => {
       const res = await API.post(endpoint, payload);
       if (res.data.success) {
         const { user, token } = res.data.data;
+        addToast(isRegister ? 'Account created successfully!' : `Welcome back, ${user.name}!`, 'success');
         loginSession(user, token);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed');
+      const errMsg = err.response?.data?.message || 'Authentication failed';
+      setError(errMsg);
+      addToast(errMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -43,9 +48,15 @@ const Landing = () => {
       justifyContent: 'center',
       height: '100vh',
       width: '100vw',
-      background: 'radial-gradient(circle at center, #0e1629 0%, #060913 100%)'
+      background: 'radial-gradient(circle at center, #0e1629 0%, #060913 100%)',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
-      <GlassCard className="neon-glow" style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Decorative premium background lights */}
+      <div className="mesh-glow" style={{ width: '400px', height: '400px', backgroundColor: 'hsl(var(--accent-cyan))', top: '-10%', left: '-10%' }} />
+      <div className="mesh-glow" style={{ width: '400px', height: '400px', backgroundColor: 'hsl(var(--accent-purple))', bottom: '-10%', right: '-10%' }} />
+
+      <GlassCard className="neon-glow" style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '24px', zIndex: 1, position: 'relative' }}>
         <div style={{ textAlign: 'center' }}>
           <h2 style={{
             fontSize: '1.75rem',

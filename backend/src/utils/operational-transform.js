@@ -53,8 +53,8 @@ class OperationalTransformation {
       if (op1.s && op2.p >= op1.p && op2.p <= op1.p + op1.s.length) {
         if (op2.s) {
           // Both inserts - combine
-          const combined = op1.s.slice(0, op2.p - op1.p) + 
-                          op2.s + 
+          const combined = op1.s.slice(0, op2.p - op1.p) +
+                          op2.s +
                           op1.s.slice(op2.p - op1.p);
           return {
             p: op1.p,

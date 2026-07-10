@@ -140,7 +140,7 @@ class InvitationService {
     }
   }
 
-  static async getPendingInvitations(userId) {
+  static async getPendingInvitations(_userId) {
     try {
       return await Invitation.find({
         invitedEmail: { $exists: true },
@@ -155,7 +155,7 @@ class InvitationService {
     }
   }
 
-  static async sendInvitationEmail(email, projectId, token, invitedBy) {
+  static async sendInvitationEmail(email, projectId, token, _invitedBy) {
     try {
       // Configure email service
       const transporter = nodemailer.createTransport({

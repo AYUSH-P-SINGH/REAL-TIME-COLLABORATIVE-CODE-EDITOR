@@ -1,5 +1,5 @@
 // Validation Middleware
-const logger = require('./logger');
+const logger = require('../utils/logger');
 
 const validate = (schema) => {
   return (req, res, next) => {

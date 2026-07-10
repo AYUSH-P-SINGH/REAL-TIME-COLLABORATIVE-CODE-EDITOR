@@ -13,7 +13,7 @@ describe('Authentication Service', () => {
       const userData = {
         name: 'Test User',
         email: 'test@example.com',
-        password: 'SecurePass123'
+        password: 'SecurePass123!'
       };
 
       const result = await authService.register(
@@ -31,7 +31,7 @@ describe('Authentication Service', () => {
       const userData = {
         name: 'Test User',
         email: 'test@example.com',
-        password: 'SecurePass123'
+        password: 'SecurePass123!'
       };
 
       await authService.register(
@@ -44,7 +44,7 @@ describe('Authentication Service', () => {
         authService.register(
           'Another User',
           userData.email,
-          'AnotherPass123'
+          'AnotherPass123!'
         )
       ).rejects.toThrow('User already exists');
     });
@@ -54,7 +54,7 @@ describe('Authentication Service', () => {
         authService.register(
           'Test User',
           'invalid-email',
-          'SecurePass123'
+          'SecurePass123!'
         )
       ).rejects.toThrow();
     });
@@ -65,7 +65,7 @@ describe('Authentication Service', () => {
       const userData = {
         name: 'Test User',
         email: 'test@example.com',
-        password: 'SecurePass123'
+        password: 'SecurePass123!'
       };
 
       await authService.register(
@@ -78,7 +78,7 @@ describe('Authentication Service', () => {
     it('should login successfully with correct credentials', async () => {
       const result = await authService.login(
         'test@example.com',
-        'SecurePass123'
+        'SecurePass123!'
       );
 
       expect(result).toHaveProperty('user');
@@ -94,7 +94,7 @@ describe('Authentication Service', () => {
 
     it('should fail with non-existent user', async () => {
       await expect(
-        authService.login('nonexistent@example.com', 'SecurePass123')
+        authService.login('nonexistent@example.com', 'SecurePass123!')
       ).rejects.toThrow('Invalid credentials');
     });
   });

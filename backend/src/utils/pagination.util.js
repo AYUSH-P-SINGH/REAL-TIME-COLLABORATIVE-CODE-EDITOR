@@ -38,35 +38,31 @@ class PaginationUtil {
   }
 
   static async paginate(query, page, limit, select = null, populate = null) {
-    try {
-      const { page: validPage, limit: validLimit } = this.validate(page, limit);
-      const skip = this.getSkip(validPage, validLimit);
+    const { page: validPage, limit: validLimit } = this.validate(page, limit);
+    const skip = this.getSkip(validPage, validLimit);
 
-      let queryBuilder = query.skip(skip).limit(validLimit);
+    let queryBuilder = query.skip(skip).limit(validLimit);
 
-      if (select) {
-        queryBuilder = queryBuilder.select(select);
-      }
-
-      if (populate) {
-        if (Array.isArray(populate)) {
-          populate.forEach((p) => {
-            queryBuilder = queryBuilder.populate(p);
-          });
-        } else {
-          queryBuilder = queryBuilder.populate(populate);
-        }
-      }
-
-      const [data, total] = await Promise.all([
-        queryBuilder.exec(),
-        query.model.countDocuments(query.getFilter ? query.getFilter() : {}),
-      ]);
-
-      return this.formatResponse(data, total, validPage, validLimit);
-    } catch (error) {
-      throw error;
+    if (select) {
+      queryBuilder = queryBuilder.select(select);
     }
+
+    if (populate) {
+      if (Array.isArray(populate)) {
+        populate.forEach((p) => {
+          queryBuilder = queryBuilder.populate(p);
+        });
+      } else {
+        queryBuilder = queryBuilder.populate(populate);
+      }
+    }
+
+    const [data, total] = await Promise.all([
+      queryBuilder.exec(),
+      query.model.countDocuments(query.getFilter ? query.getFilter() : {}),
+    ]);
+
+    return this.formatResponse(data, total, validPage, validLimit);
   }
 }
 
