@@ -9,6 +9,7 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const [editorTheme, setEditorTheme] = useState('vs-dark');
+  const [cursorPos, setCursorPos] = useState({ line: 1, column: 1 });
   const { socket } = useSocket();
 
   const { handleLocalChange } = useDocSync(fileId, editorRef, monacoRef);
@@ -39,7 +40,7 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    // Define Cyberpunk Theme
+    // Cyberpunk Theme Definition
     monaco.editor.defineTheme('cyberpunk', {
       base: 'vs-dark',
       inherit: true,
@@ -49,16 +50,16 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
         { token: 'string', foreground: 'ff9f00' }
       ],
       colors: {
-        'editor.background': '#0a0d1a',
+        'editor.background': '#070a14',
         'editor.foreground': '#00ffcc',
         'editorLineNumber.foreground': '#ff0055',
         'editorLineNumber.activeForeground': '#00ffcc',
-        'editor.lineHighlightBackground': '#141930',
+        'editor.lineHighlightBackground': '#11162b',
         'editor.selectionBackground': '#ff005540'
       }
     });
 
-    // Define Synthwave Theme
+    // Synthwave Theme Definition
     monaco.editor.defineTheme('synthwave', {
       base: 'vs-dark',
       inherit: true,
@@ -69,26 +70,36 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
         { token: 'number', foreground: 'f97e72' }
       ],
       colors: {
-        'editor.background': '#241230',
+        'editor.background': '#1a0b26',
         'editor.foreground': '#fede5d',
         'editorLineNumber.foreground': '#ff7edb',
         'editorLineNumber.activeForeground': '#fede5d',
-        'editor.lineHighlightBackground': '#341a45',
+        'editor.lineHighlightBackground': '#2a123d',
         'editor.selectionBackground': '#ff7edb40'
       }
     });
 
-    // Customize Monaco coding space options
+    // Configure options
     editor.updateOptions({
       fontSize: 14,
       fontFamily: 'var(--font-mono)',
       cursorBlinking: 'smooth',
       smoothScrolling: true,
       cursorSmoothCaretAnimation: 'on',
-      padding: { top: 16, bottom: 16 },
-      minimap: { enabled: true, side: 'right' },
+      padding: { top: 12, bottom: 12 },
+      minimap: { enabled: false },
       roundedSelection: true,
       lineHeight: 22,
+      automaticLayout: true,
+      wordWrap: 'on'
+    });
+
+    // Cursor position tracking
+    editor.onDidChangeCursorPosition((e) => {
+      setCursorPos({
+        line: e.position.lineNumber,
+        column: e.position.column
+      });
     });
   };
 
@@ -98,7 +109,8 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
       flexDirection: 'column',
       height: '100%',
       width: '100%',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      border: '1px solid hsl(var(--border-subtle))'
     }}>
       <EditorHeader
         fileName={fileName}
@@ -106,6 +118,7 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
         editorTheme={editorTheme}
         setEditorTheme={handleThemeChange}
       />
+      
       <div style={{ flex: 1, width: '100%', position: 'relative' }}>
         <MonacoEditor
           height="100%"
@@ -113,18 +126,37 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
           theme={editorTheme}
           loading={
             <div style={{
-              color: '#22d3ee',
+              color: 'hsl(var(--accent-cyan))',
               padding: '24px',
-              fontSize: '0.95rem',
+              fontSize: '0.9rem',
               fontWeight: '500',
-              fontFamily: 'var(--font-sans)'
+              fontFamily: 'var(--font-sans)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
             }}>
-              Loading Collaborative Monaco Instance...
+              Initialising Monaco Engine...
             </div>
           }
           editorDidMount={handleEditorDidMount}
           onChange={(value, event) => handleLocalChange(value, event)}
         />
+      </div>
+
+      {/* Footer Status Bar */}
+      <div style={{
+        height: '24px',
+        backgroundColor: 'hsl(var(--bg-surface))',
+        borderTop: '1px solid hsl(var(--border-subtle))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 16px',
+        fontSize: '0.7rem',
+        color: 'hsl(var(--text-muted))'
+      }}>
+        <span>UTF-8 &nbsp;|&nbsp; {fileLanguage?.toUpperCase()}</span>
+        <span>Ln {cursorPos.line}, Col {cursorPos.column}</span>
       </div>
     </div>
   );

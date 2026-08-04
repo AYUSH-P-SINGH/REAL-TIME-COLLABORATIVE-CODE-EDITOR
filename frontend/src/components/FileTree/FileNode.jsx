@@ -1,10 +1,33 @@
 import React, { useState } from 'react';
-import { Folder, File, ChevronRight, ChevronDown, Trash2 } from 'lucide-react';
+import { Folder, FolderOpen, FileCode, FileText, Code2, FileJson, ChevronRight, ChevronDown, Trash2 } from 'lucide-react';
 
-const FileNode = ({ node, onSelect, onDelete }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const getFileIcon = (fileName) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'js':
+    case 'jsx':
+    case 'ts':
+    case 'tsx':
+      return <FileCode size={14} color="hsl(var(--accent-cyan))" />;
+    case 'py':
+      return <Code2 size={14} color="hsl(var(--accent-amber))" />;
+    case 'json':
+      return <FileJson size={14} color="hsl(var(--accent-purple))" />;
+    case 'css':
+    case 'html':
+      return <FileCode size={14} color="hsl(var(--accent-pink))" />;
+    case 'md':
+    case 'txt':
+    default:
+      return <FileText size={14} color="hsl(var(--text-muted))" />;
+  }
+};
+
+const FileNode = ({ node, activeFileId, onSelect, onDelete }) => {
+  const [isOpen, setIsOpen] = useState(true);
 
   const isDir = node.type === 'directory';
+  const isActive = node._id === activeFileId;
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -16,7 +39,7 @@ const FileNode = ({ node, onSelect, onDelete }) => {
   };
 
   return (
-    <div style={{ marginLeft: '12px' }}>
+    <div style={{ marginLeft: '8px' }}>
       <div 
         onClick={handleClick}
         style={{
@@ -26,21 +49,38 @@ const FileNode = ({ node, onSelect, onDelete }) => {
           padding: '6px 8px',
           borderRadius: '6px',
           cursor: 'pointer',
-          transition: 'background-color 0.2s',
+          transition: 'all 0.15s ease',
           fontSize: '0.85rem',
-          color: isDir ? '#c084fc' : '#cbd5e1'
+          backgroundColor: isActive ? 'hsl(var(--accent-cyan) / 0.15)' : 'transparent',
+          border: isActive ? '1px solid hsl(var(--accent-cyan) / 0.3)' : '1px solid transparent',
+          color: isActive ? '#fff' : isDir ? 'hsl(var(--accent-purple))' : 'hsl(var(--text-secondary))'
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+        onMouseEnter={(e) => { 
+          if (!isActive) e.currentTarget.style.backgroundColor = 'hsl(var(--bg-surface))'; 
+        }}
+        onMouseLeave={(e) => { 
+          if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; 
+        }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
           {isDir ? (
-            isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+            isOpen ? <ChevronDown size={14} color="hsl(var(--text-muted))" /> : <ChevronRight size={14} color="hsl(var(--text-muted))" />
           ) : (
             <div style={{ width: '14px' }} />
           )}
-          {isDir ? <Folder size={14} /> : <File size={14} />}
-          <span>{node.name}</span>
+          {isDir ? (
+            isOpen ? <FolderOpen size={14} color="hsl(var(--accent-purple))" /> : <Folder size={14} color="hsl(var(--accent-purple))" />
+          ) : (
+            getFileIcon(node.name)
+          )}
+          <span style={{
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            fontWeight: isActive ? '600' : '400'
+          }}>
+            {node.name}
+          </span>
         </div>
         
         <button
@@ -48,25 +88,36 @@ const FileNode = ({ node, onSelect, onDelete }) => {
             e.stopPropagation();
             onDelete(node);
           }}
+          title="Delete Item"
           style={{
             background: 'none',
             border: 'none',
-            color: '#8f9cae',
+            color: 'hsl(var(--text-muted))',
             cursor: 'pointer',
-            padding: '2px',
-            transition: 'color 0.2s, transform 0.2s'
+            padding: '2px 4px',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            opacity: 0.7,
+            transition: 'all 0.2s ease'
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#f43f5e'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = '#8f9cae'; e.currentTarget.style.transform = 'scale(1.0)'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(var(--accent-pink))'; e.currentTarget.style.opacity = '1'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(var(--text-muted))'; e.currentTarget.style.opacity = '0.7'; }}
         >
           <Trash2 size={12} />
         </button>
       </div>
 
       {isDir && isOpen && node.children && (
-        <div style={{ borderLeft: '1px solid #1c2638', marginLeft: '6px' }}>
+        <div style={{ borderLeft: '1px solid hsl(var(--border-subtle))', marginLeft: '6px', paddingTop: '2px' }}>
           {node.children.map(child => (
-            <FileNode key={child._id} node={child} onSelect={onSelect} onDelete={onDelete} />
+            <FileNode 
+              key={child._id} 
+              node={child} 
+              activeFileId={activeFileId}
+              onSelect={onSelect} 
+              onDelete={onDelete} 
+            />
           ))}
         </div>
       )}
