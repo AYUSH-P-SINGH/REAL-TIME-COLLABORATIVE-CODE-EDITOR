@@ -4,7 +4,7 @@ import API from '../services/api';
 import GlassCard from '../components/Shared/GlassCard';
 import NeonButton from '../components/Shared/NeonButton';
 import { useToast } from '../context/ToastContext';
-import { Code2, Zap, Users, ShieldCheck, Terminal, ArrowRight, UserCheck } from 'lucide-react';
+import { Code2, Zap, Users, ShieldCheck, Terminal, ArrowRight, UserCheck, Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 
 const Landing = () => {
   const { loginSession } = useAuth();
@@ -14,13 +14,30 @@ const Landing = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Input Validation
+    if (isRegister && name.trim().length < 2) {
+      setError('Name must be at least 2 characters long.');
+      return;
+    }
+    if (!email.includes('@') || !email.includes('.')) {
+      setError('Please provide a valid email address.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -43,9 +60,25 @@ const Landing = () => {
   };
 
   const handleDemoLogin = async () => {
-    setEmail('demo@codesync.io');
-    setPassword('demopass123');
-    if (isRegister) setIsRegister(false);
+    setError('');
+    setDemoLoading(true);
+
+    try {
+      const res = await API.post('/auth/demo');
+      if (res.data.success) {
+        const { user, token } = res.data.data;
+        addToast(`Logged in with Demo Developer account!`, 'success');
+        loginSession(user, token);
+      }
+    } catch (err) {
+      // Fallback demo credentials if endpoint fails
+      setEmail('demo@codesync.io');
+      setPassword('demopass123');
+      if (isRegister) setIsRegister(false);
+      addToast('Demo credentials filled! Click Sign In to proceed.', 'info');
+    } finally {
+      setDemoLoading(false);
+    }
   };
 
   return (
@@ -60,7 +93,7 @@ const Landing = () => {
       overflowX: 'hidden',
       padding: '40px 20px'
     }}>
-      {/* Decorative background ambient glows */}
+      {/* Background ambient glows */}
       <div className="mesh-glow" style={{ width: '500px', height: '500px', backgroundColor: 'hsl(var(--accent-cyan))', top: '-15%', left: '-10%' }} />
       <div className="mesh-glow" style={{ width: '500px', height: '500px', backgroundColor: 'hsl(var(--accent-purple))', bottom: '-15%', right: '-10%' }} />
 
@@ -75,12 +108,12 @@ const Landing = () => {
         position: 'relative'
       }}>
         
-        {/* Left Side: Product Showcase & Brand Headline */}
+        {/* Left Column: Product Value Highlights */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <span className="badge badge-cyan">
               <Zap size={12} />
-              PRODUCTION-READY MULTIPLAYER EDITOR
+              PRODUCTION-READY AUTHENTICATION
             </span>
           </div>
 
@@ -105,7 +138,6 @@ const Landing = () => {
             Engineered for modern software teams. Edit code simultaneously with zero latency, live cursor synchronization, granular workspace management, and Monaco syntax highlighting.
           </p>
 
-          {/* Features Grid */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -171,14 +203,14 @@ const Landing = () => {
             }}>
               <ShieldCheck size={20} color="hsl(var(--accent-pink))" style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Secure Spaces</h4>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Secure JWT Auth</h4>
                 <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: 1.4 }}>Encrypted auth tokens & permission-scoped project trees.</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Authentication Form Card */}
+        {/* Right Column: Auth Form Card */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <GlassCard style={{
             width: '100%',
@@ -190,7 +222,7 @@ const Landing = () => {
             border: '1px solid hsl(var(--border-glow))',
             boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)'
           }}>
-            {/* Header Brand */}
+            {/* Header Icon */}
             <div style={{ textAlign: 'center' }}>
               <div style={{
                 display: 'inline-flex',
@@ -218,7 +250,7 @@ const Landing = () => {
               </p>
             </div>
 
-            {/* Auth Tab Switcher */}
+            {/* Auth Mode Tab Bar */}
             <div style={{
               display: 'flex',
               backgroundColor: 'hsl(var(--bg-surface))',
@@ -243,7 +275,7 @@ const Landing = () => {
                   transition: 'all 0.2s ease'
                 }}
               >
-                Log In
+                Sign In
               </button>
               <button
                 type="button"
@@ -285,65 +317,97 @@ const Landing = () => {
               {isRegister && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>Full Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Alex Morgan"
-                    className="input-field"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <User size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input
+                      type="text"
+                      placeholder="e.g. Alex Morgan"
+                      className="input-field"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      style={{ paddingLeft: '40px' }}
+                      required
+                    />
+                  </div>
                 </div>
               )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>Email Address</label>
-                <input
-                  type="email"
-                  placeholder="developer@example.com"
-                  className="input-field"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+                <div style={{ position: 'relative' }}>
+                  <Mail size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="email"
+                    placeholder="developer@example.com"
+                    className="input-field"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{ paddingLeft: '40px' }}
+                    required
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••••••"
-                  className="input-field"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div style={{ position: 'relative' }}>
+                  <Lock size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••••••"
+                    className="input-field"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{ paddingLeft: '40px', paddingRight: '40px' }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'hsl(var(--text-muted))',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
               
-              <NeonButton type="submit" disabled={loading} style={{ width: '100%', marginTop: '4px' }}>
+              <NeonButton type="submit" disabled={loading || demoLoading} style={{ width: '100%', marginTop: '4px' }}>
                 {loading ? 'Authenticating...' : isRegister ? 'Create Free Account' : 'Sign In to Workspace'}
                 {!loading && <ArrowRight size={16} />}
               </NeonButton>
 
-              <button
-                type="button"
-                onClick={handleDemoLogin}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'hsl(var(--text-muted))',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  marginTop: '4px',
-                  textDecoration: 'underline'
-                }}
-              >
-                <UserCheck size={14} /> Fill Demo Credentials
-              </button>
+              <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  onClick={handleDemoLogin}
+                  disabled={loading || demoLoading}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'hsl(var(--accent-cyan))',
+                    fontSize: '0.825rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <UserCheck size={14} /> {demoLoading ? 'Connecting Demo Account...' : 'Instant 1-Click Demo Login'}
+                </button>
+              </div>
             </form>
           </GlassCard>
         </div>
