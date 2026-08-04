@@ -15,4 +15,16 @@ API.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default API;

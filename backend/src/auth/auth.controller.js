@@ -4,7 +4,7 @@ const register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
+      return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
     }
     const data = await authService.register(name, email, password);
     res.status(201).json({ success: true, data });
@@ -12,7 +12,6 @@ const register = async (req, res, next) => {
     next(error);
   }
 };
-//login
 
 const login = async (req, res, next) => {
   try {
@@ -27,4 +26,22 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+const getMe = async (req, res, next) => {
+  try {
+    const data = await authService.getMe(req.user.id);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const demoLogin = async (req, res, next) => {
+  try {
+    const data = await authService.loginDemo();
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, demoLogin };
