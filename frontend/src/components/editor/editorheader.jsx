@@ -1,47 +1,58 @@
 import React from 'react';
-import { Share2, Monitor, Code } from 'lucide-react';
+import { Share2, Monitor, Code, Copy, Check } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 const EditorHeader = ({ fileName, fileLanguage, editorTheme, setEditorTheme }) => {
   const { addToast } = useToast();
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    addToast('Workspace session URL copied to clipboard!', 'success');
+  };
+
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: '12px 18px',
-      backgroundColor: '#0f131c',
-      borderBottom: '1px solid #1c2638',
-      height: '50px'
+      padding: '0 16px',
+      backgroundColor: 'hsl(var(--bg-surface))',
+      borderBottom: '1px solid hsl(var(--border-subtle))',
+      height: '46px',
+      gap: '12px',
+      flexWrap: 'wrap'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Code size={16} color="#22d3ee" />
-        <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#fff' }}>
+      {/* File Tag */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+        <Code size={16} color="hsl(var(--accent-cyan))" />
+        <span style={{
+          fontSize: '0.85rem',
+          fontWeight: '700',
+          color: '#fff',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
           {fileName}
         </span>
-        <span style={{
-          fontSize: '0.7rem',
-          backgroundColor: '#1b2333',
-          color: '#8f9cae',
-          padding: '2px 6px',
-          borderRadius: '4px',
-          textTransform: 'uppercase',
-          fontWeight: '500'
-        }}>
+        <span className="badge badge-purple" style={{ textTransform: 'uppercase', fontSize: '0.65rem' }}>
           {fileLanguage}
         </span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {/* Action Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Theme Picker */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Monitor size={14} color="#8f9cae" />
+          <Monitor size={14} color="hsl(var(--text-muted))" className="hide-mobile" />
           <select 
             value={editorTheme}
             onChange={(e) => setEditorTheme(e.target.value)}
             style={{
-              background: '#151b26',
-              border: '1px solid #1c2638',
-              color: '#8f9cae',
+              background: 'hsl(var(--bg-deep))',
+              border: '1px solid hsl(var(--border-subtle))',
+              color: 'hsl(var(--text-secondary))',
               fontSize: '0.75rem',
               padding: '4px 8px',
               borderRadius: '6px',
@@ -49,37 +60,21 @@ const EditorHeader = ({ fileName, fileLanguage, editorTheme, setEditorTheme }) =
               cursor: 'pointer'
             }}
           >
-            <option value="vs-dark">Dark</option>
-            <option value="light">Light</option>
+            <option value="vs-dark">Dark Theme</option>
+            <option value="light">Light Theme</option>
             <option value="cyberpunk">⚡ Cyberpunk</option>
             <option value="synthwave">🌌 Synthwave</option>
           </select>
         </div>
 
+        {/* Share Button */}
         <button
-          onClick={() => {
-            navigator.clipboard.writeText(window.location.href);
-            addToast('Workspace sharing link copied to clipboard!', 'success');
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'rgba(34, 211, 238, 0.1)',
-            border: '1px solid rgba(34, 211, 238, 0.2)',
-            color: '#22d3ee',
-            padding: '4px 10px',
-            borderRadius: '6px',
-            fontSize: '0.75rem',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s'
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(34, 211, 238, 0.2)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(34, 211, 238, 0.1)' }}
+          onClick={handleCopyLink}
+          className="badge badge-cyan"
+          style={{ cursor: 'pointer', padding: '6px 12px' }}
         >
           <Share2 size={12} />
-          Share Room
+          <span className="hide-mobile">Share Room</span>
         </button>
       </div>
     </div>

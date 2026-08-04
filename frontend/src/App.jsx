@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/authcontext';
 import { SocketProvider } from './context/SocketContext';
 import { ToastProvider } from './context/ToastContext';
+import ErrorBoundary from './components/Shared/ErrorBoundary';
 import Landing from './pages/landing';
 import Dashboard from './pages/dashboard';
 import Workspace from './pages/workspace';
@@ -40,19 +41,19 @@ function AppRoutes() {
   );
 }
 
-
-
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <ToastProvider>
-          <SocketProvider>
-            <AppRoutes />
-          </SocketProvider>
-        </ToastProvider>
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <ToastProvider>
+            <SocketProvider>
+              <AppRoutes />
+            </SocketProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

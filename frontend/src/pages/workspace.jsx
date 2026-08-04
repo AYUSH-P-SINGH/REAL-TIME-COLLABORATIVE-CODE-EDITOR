@@ -5,7 +5,7 @@ import Navbar from '../components/navigation/navbar';
 import FileExplorer from '../components/FileTree/FileExplorer';
 import CodeEditor from '../components/editor/codeeditor';
 import AvatarGroup from '../components/Shared/AvatarGroup';
-import { ArrowLeft, UserPlus, Activity } from 'lucide-react';
+import { ArrowLeft, UserPlus, Activity, Menu, X, Command, Code2, Plus, HelpCircle } from 'lucide-react';
 import GlassCard from '../components/Shared/GlassCard';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../context/ToastContext';
@@ -13,16 +13,25 @@ import { useToast } from '../context/ToastContext';
 const Workspace = () => {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
-  const [activeFile, setActiveFile] = useState(null);
   
+  // Tab System State: list of open files
+  const [openFiles, setOpenFiles] = useState([]);
+  const [activeFileId, setActiveFileId] = useState(null);
+
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   
   const navigate = useNavigate();
   const { socket } = useSocket();
   const { addToast } = useToast();
+  
   const [activityLog, setActivityLog] = useState([]);
   const [showActivityLog, setShowActivityLog] = useState(true);
+
+  // Mobile Drawers state
+  const [mobileExplorerOpen, setMobileExplorerOpen] = useState(false);
+  const [mobileActivityOpen, setMobileActivityOpen] = useState(false);
 
   useEffect(() => {
     if (!socket) return;
@@ -45,14 +54,13 @@ const Workspace = () => {
         const time = new Date().toLocaleTimeString();
         setActivityLog(prev => {
           const lastLog = prev[0];
-          // Throttle identical edit activity logs
           if (lastLog && lastLog.type === 'edit' && lastLog.senderId === senderId) {
             return prev;
           }
           return [
             {
               id: Date.now() + Math.random(),
-              text: `Collaborator updated document changes.`,
+              text: `Collaborator modified codebase.`,
               time,
               type: 'edit',
               senderId
@@ -68,7 +76,7 @@ const Workspace = () => {
       setActivityLog(prev => [
         {
           id: Date.now() + Math.random(),
-          text: `Workspace theme changed to: ${theme}`,
+          text: `Workspace editor theme updated to: ${theme}`,
           time,
           type: 'theme'
         },
@@ -105,6 +113,28 @@ const Workspace = () => {
     }
   }, [projectId, fetchProjectDetails]);
 
+  // Open file handler (tab management)
+  const handleSelectFile = (file) => {
+    if (!openFiles.find(f => f.id === file.id)) {
+      setOpenFiles(prev => [...prev, file]);
+    }
+    setActiveFileId(file.id);
+    setMobileExplorerOpen(false);
+  };
+
+  const handleCloseTab = (e, fileId) => {
+    e.stopPropagation();
+    const filtered = openFiles.filter(f => f.id !== fileId);
+    setOpenFiles(filtered);
+    if (activeFileId === fileId) {
+      if (filtered.length > 0) {
+        setActiveFileId(filtered[filtered.length - 1].id);
+      } else {
+        setActiveFileId(null);
+      }
+    }
+  };
+
   const handleInvite = async (e) => {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
@@ -112,26 +142,29 @@ const Workspace = () => {
     try {
       const res = await API.post(`/projects/${projectId}/invite`, { email: inviteEmail });
       if (res.data.success) {
-        addToast('Collaborator added successfully!', 'success');
+        addToast('Collaborator invited successfully!', 'success');
         setInviteEmail('');
         setShowInviteModal(false);
         fetchProjectDetails();
       }
     } catch (err) {
-      addToast(err.response?.data?.message || 'Failed to add collaborator', 'error');
+      addToast(err.response?.data?.message || 'Failed to invite collaborator', 'error');
     }
   };
+
+  const activeFile = openFiles.find(f => f.id === activeFileId);
 
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
-      backgroundColor: '#060913',
+      backgroundColor: 'hsl(var(--bg-deep))',
       overflow: 'hidden'
     }}>
+      {/* Navbar Header */}
       <Navbar>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {project && (
             <AvatarGroup 
               users={project.members.map(m => ({ id: m.user._id, name: m.user.name }))} 
@@ -140,104 +173,209 @@ const Workspace = () => {
           
           <button
             onClick={() => setShowInviteModal(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#1a2233',
-              border: '1px solid #2d3b55',
-              color: '#fff',
-              fontSize: '0.8rem',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#25314a' }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#1a2233' }}
+            className="btn-secondary"
+            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
           >
-            <UserPlus size={14} />
-            Invite
+            <UserPlus size={14} color="hsl(var(--accent-cyan))" />
+            <span className="hide-mobile">Invite</span>
+          </button>
+
+          <button
+            onClick={() => setShowShortcutsModal(true)}
+            className="btn-ghost hide-mobile"
+            title="Keyboard Shortcuts"
+            style={{ padding: '6px' }}
+          >
+            <HelpCircle size={16} />
           </button>
 
           <button
             onClick={() => setShowActivityLog(prev => !prev)}
+            className="btn-secondary hide-mobile"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: showActivityLog ? 'rgba(34, 211, 238, 0.15)' : '#1a2233',
-              border: showActivityLog ? '1px solid #22d3ee' : '1px solid #2d3b55',
-              color: showActivityLog ? '#22d3ee' : '#fff',
-              fontSize: '0.8rem',
               padding: '6px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: '600',
-              transition: 'all 0.2s ease'
+              fontSize: '0.8rem',
+              borderColor: showActivityLog ? 'hsl(var(--accent-cyan))' : 'hsl(var(--border-subtle))',
+              color: showActivityLog ? 'hsl(var(--accent-cyan))' : 'hsl(var(--text-secondary))'
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = showActivityLog ? 'rgba(34, 211, 238, 0.25)' : '#25314a' }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = showActivityLog ? 'rgba(34, 211, 238, 0.15)' : '#1a2233' }}
           >
             <Activity size={14} />
-            Activity Log
+            Activity
           </button>
         </div>
       </Navbar>
 
+      {/* Mobile Actions Bar */}
+      <div className="hide-desktop" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '8px 16px',
+        backgroundColor: 'hsl(var(--bg-surface))',
+        borderBottom: '1px solid hsl(var(--border-subtle))'
+      }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="btn-ghost"
+            style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+          >
+            <ArrowLeft size={14} />
+          </button>
+
+          <button
+            onClick={() => { setMobileExplorerOpen(true); setMobileActivityOpen(false); }}
+            className="badge badge-cyan"
+            style={{ cursor: 'pointer' }}
+          >
+            <Menu size={12} />
+            Files Explorer
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setShowShortcutsModal(true)}
+            className="btn-ghost"
+            style={{ padding: '4px' }}
+          >
+            <Command size={14} />
+          </button>
+
+          <button
+            onClick={() => { setMobileActivityOpen(true); setMobileExplorerOpen(false); }}
+            className="badge badge-purple"
+            style={{ cursor: 'pointer' }}
+          >
+            <Activity size={12} />
+            Activity ({activityLog.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Main Workspace Workspace Layout */}
       <div style={{
         display: 'flex',
         flex: 1,
-        padding: '12px',
-        gap: '12px',
-        overflow: 'hidden'
+        padding: '10px',
+        gap: '10px',
+        overflow: 'hidden',
+        position: 'relative'
       }}>
-        {/* Left pane: Explorer and Back triggers */}
-        <div style={{
-          width: '260px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          height: '100%',
-          flexShrink: 0
-        }}>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: '#0a0e17',
-              border: '1px solid #1a2233',
-              borderRadius: '8px',
-              color: '#8f9cae',
-              fontSize: '0.8rem',
-              padding: '8px 12px',
-              cursor: 'pointer',
-              width: '100%',
-              fontWeight: '600',
-              textAlign: 'left'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#22d3ee'; e.currentTarget.style.color = '#fff'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a2233'; e.currentTarget.style.color = '#8f9cae'; }}
-          >
-            <ArrowLeft size={14} />
-            Back to Dashboard
-          </button>
+        
+        {/* Mobile Backdrop Overlay */}
+        {(mobileExplorerOpen || mobileActivityOpen) && (
+          <div 
+            className="drawer-backdrop" 
+            onClick={() => { setMobileExplorerOpen(false); setMobileActivityOpen(false); }} 
+          />
+        )}
 
-          <div style={{ flex: 1 }}>
+        {/* File Explorer Sidebar (Desktop Panel & Mobile Drawer) */}
+        <div 
+          className={`glass-panel ${mobileExplorerOpen ? 'mobile-drawer mobile-drawer-left' : 'show-desktop'}`}
+          style={{
+            width: '260px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            height: '100%',
+            flexShrink: 0
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 0 12px' }}>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="btn-ghost hide-mobile"
+              style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%', justifyContent: 'flex-start' }}
+            >
+              <ArrowLeft size={14} /> Back to Dashboard
+            </button>
+
+            {mobileExplorerOpen && (
+              <button onClick={() => setMobileExplorerOpen(false)} className="btn-ghost" style={{ padding: '4px' }}>
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
             <FileExplorer 
               projectId={projectId} 
-              onFileSelect={(file) => setActiveFile(file)} 
+              activeFileId={activeFileId}
+              onFileSelect={handleSelectFile} 
             />
           </div>
         </div>
 
-        {/* Right pane: Monaco workspace */}
-        <div style={{ flex: 1, height: '100%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Center Monaco Editor Pane */}
+        <div style={{ flex: 1, height: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          
+          {/* Open Tabs Bar */}
+          {openFiles.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              overflowX: 'auto',
+              backgroundColor: 'hsl(var(--bg-surface))',
+              borderRadius: '8px 8px 0 0',
+              padding: '4px 6px 0 6px',
+              border: '1px solid hsl(var(--border-subtle))',
+              borderBottom: 'none'
+            }}>
+              {openFiles.map(file => {
+                const isTabActive = file.id === activeFileId;
+                return (
+                  <div
+                    key={file.id}
+                    onClick={() => setActiveFileId(file.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '6px 12px',
+                      borderRadius: '6px 6px 0 0',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      fontWeight: isTabActive ? '600' : '400',
+                      backgroundColor: isTabActive ? 'hsl(var(--bg-deep))' : 'transparent',
+                      color: isTabActive ? '#fff' : 'hsl(var(--text-muted))',
+                      borderTop: isTabActive ? '2px solid hsl(var(--accent-cyan))' : '2px solid transparent',
+                      borderLeft: isTabActive ? '1px solid hsl(var(--border-subtle))' : '1px solid transparent',
+                      borderRight: isTabActive ? '1px solid hsl(var(--border-subtle))' : '1px solid transparent',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <Code2 size={13} color={isTabActive ? 'hsl(var(--accent-cyan))' : 'hsl(var(--text-muted))'} />
+                    <span>{file.name}</span>
+                    <button
+                      onClick={(e) => handleCloseTab(e, file.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'hsl(var(--text-muted))',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        borderRadius: '4px',
+                        padding: '2px'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'hsl(var(--accent-pink))'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'hsl(var(--text-muted))'; }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Active File Editor or Empty Welcome Workspace */}
           {activeFile ? (
             <CodeEditor 
+              key={activeFile.id}
               fileId={activeFile.id} 
               fileName={activeFile.name} 
               fileLanguage={activeFile.language} 
@@ -249,49 +387,64 @@ const Workspace = () => {
               alignItems: 'center',
               justifyContent: 'center',
               flexDirection: 'column',
-              gap: '12px',
-              color: '#8f9cae'
+              gap: '16px',
+              color: 'hsl(var(--text-secondary))',
+              textAlign: 'center',
+              padding: '24px'
             }}>
-              <span style={{ fontSize: '1rem', fontWeight: '600', color: '#fff' }}>No Active File</span>
-              <span style={{ fontSize: '0.85rem' }}>Select a file from the explorer sidebar to begin coding</span>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                backgroundColor: 'hsl(var(--accent-cyan) / 0.1)',
+                color: 'hsl(var(--accent-cyan))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Code2 size={32} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#fff', marginBottom: '6px' }}>
+                  No Active Workspace File
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))', maxWidth: '360px' }}>
+                  Select or create a file from the explorer sidebar to open Monaco editor and start collaborative editing.
+                </p>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Activity Log Side-Panel */}
-        <div className="glass-panel" style={{
-          width: showActivityLog ? '280px' : '0px',
+        {/* Right Activity Panel (Desktop Slide & Mobile Drawer) */}
+        <div className={`glass-panel ${mobileActivityOpen ? 'mobile-drawer mobile-drawer-right' : ''}`} style={{
+          width: showActivityLog || mobileActivityOpen ? '280px' : '0px',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
           transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           flexShrink: 0,
-          borderLeft: showActivityLog ? '1px solid #2d3b55' : 'none',
-          opacity: showActivityLog ? 1 : 0
+          opacity: showActivityLog || mobileActivityOpen ? 1 : 0
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '12px 16px',
-            borderBottom: '1px solid #1c2638',
-            backgroundColor: '#0f131c'
+            borderBottom: '1px solid hsl(var(--border-subtle))',
+            backgroundColor: 'hsl(var(--bg-surface))'
           }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>Activity Log</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>Workspace Activity</span>
             <button 
-              onClick={() => setShowActivityLog(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#8f9cae',
-                cursor: 'pointer',
-                fontSize: '0.75rem'
-              }}
+              onClick={() => { setShowActivityLog(false); setMobileActivityOpen(false); }}
+              className="btn-ghost"
+              style={{ padding: '4px' }}
             >
-              Close
+              <X size={14} />
             </button>
           </div>
+
           <div style={{
             flex: 1,
             overflowY: 'auto',
@@ -301,28 +454,28 @@ const Workspace = () => {
             gap: '8px'
           }}>
             {activityLog.length === 0 ? (
-              <div style={{ fontSize: '0.75rem', color: '#526685', textAlign: 'center', marginTop: '16px' }}>
-                No workspace activities recorded yet.
+              <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))', textAlign: 'center', marginTop: '20px' }}>
+                No activity logged in session yet.
               </div>
             ) : (
               activityLog.map((log) => (
                 <div key={log.id} style={{
                   padding: '8px 10px',
-                  backgroundColor: '#0a0d16',
-                  border: '1px solid #172033',
+                  backgroundColor: 'hsl(var(--bg-surface))',
+                  border: '1px solid hsl(var(--border-subtle))',
                   borderRadius: '6px',
                   fontSize: '0.75rem',
-                  color: '#b2c0d2',
+                  color: 'hsl(var(--text-secondary))',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '4px',
                   animation: 'slideIn 0.2s ease-out'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: '#fff', fontWeight: '600' }}>
                       {log.type === 'presence' ? '👥 Presence' : log.type === 'edit' ? '📝 Edit' : '⚙️ System'}
                     </span>
-                    <span style={{ fontSize: '0.65rem', color: '#526685' }}>{log.time}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'hsl(var(--text-muted))' }}>{log.time}</span>
                   </div>
                   <span>{log.text}</span>
                 </div>
@@ -330,8 +483,10 @@ const Workspace = () => {
             )}
           </div>
         </div>
+
       </div>
 
+      {/* Invite Modal */}
       {showInviteModal && (
         <div style={{
           position: 'fixed',
@@ -344,16 +499,17 @@ const Workspace = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000
+          zIndex: 1000,
+          padding: '20px'
         }}>
-          <GlassCard style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <GlassCard style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px' }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#fff' }}>
-              Add Developer Collaborator
+              Invite Developer Collaborator
             </h3>
             
             <form onSubmit={handleInvite} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: '#8f9cae' }}>Email Address</label>
+                <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>Email Address</label>
                 <input
                   type="email"
                   placeholder="collaborator@example.com"
@@ -361,6 +517,7 @@ const Workspace = () => {
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   required
+                  autoFocus
                 />
               </div>
 
@@ -368,41 +525,72 @@ const Workspace = () => {
                 <button 
                   type="button" 
                   onClick={() => setShowInviteModal(false)}
-                  style={{
-                    flex: 1,
-                    background: '#1a2233',
-                    border: '1px solid #2d3b55',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    padding: '10px'
-                  }}
+                  className="btn-secondary"
+                  style={{ flex: 1, justifyContent: 'center' }}
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  style={{
-                    flex: 1,
-                    background: 'linear-gradient(135deg, #22d3ee, #a855f7)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: '#000',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    padding: '10px'
-                  }}
+                  className="neon-btn"
+                  style={{ flex: 1 }}
                 >
-                  Invite
+                  Send Invite
                 </button>
               </div>
             </form>
           </GlassCard>
         </div>
       )}
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcutsModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <GlassCard style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#fff' }}>
+                Keyboard Shortcuts
+              </h3>
+              <button onClick={() => setShowShortcutsModal(false)} className="btn-ghost" style={{ padding: '4px' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'hsl(var(--text-secondary))' }}>
+                <span>Save Document</span>
+                <kbd style={{ background: 'hsl(var(--bg-surface))', padding: '2px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border-subtle))', color: '#fff' }}>Ctrl + S</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'hsl(var(--text-secondary))' }}>
+                <span>Command Palette</span>
+                <kbd style={{ background: 'hsl(var(--bg-surface))', padding: '2px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border-subtle))', color: '#fff' }}>Ctrl + Shift + P</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'hsl(var(--text-secondary))' }}>
+                <span>Theme Switcher</span>
+                <kbd style={{ background: 'hsl(var(--bg-surface))', padding: '2px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border-subtle))', color: '#fff' }}>Alt + T</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'hsl(var(--text-secondary))' }}>
+                <span>Find in Document</span>
+                <kbd style={{ background: 'hsl(var(--bg-surface))', padding: '2px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border-subtle))', color: '#fff' }}>Ctrl + F</kbd>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
     </div>
   );
 };
