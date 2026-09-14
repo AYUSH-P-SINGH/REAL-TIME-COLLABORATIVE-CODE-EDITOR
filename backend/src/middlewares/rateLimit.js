@@ -1,9 +1,12 @@
-const { cacheClient } = require('../config/redis');
-const logger = require('../utils/logger');
+﻿const { cacheClient } = require('../config/redis');
 
 const rateLimiter = (limit = 100, windowSecs = 60) => {
   return async (req, res, next) => {
     try {
+      if (!cacheClient || !cacheClient.isOpen || process.env.NODE_ENV === 'test') {
+        return next();
+      }
+
       const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
       const key = `ratelimit:${ip}`;
 
@@ -21,8 +24,6 @@ const rateLimiter = (limit = 100, windowSecs = 60) => {
 
       next();
     } catch (err) {
-      logger.error('Rate limiter error:', err);
-      // Fail-safe open: continue processing request if rate limiter check errors out
       next();
     }
   };

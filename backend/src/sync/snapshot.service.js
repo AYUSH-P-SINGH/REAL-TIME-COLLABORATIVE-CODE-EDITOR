@@ -1,42 +1,68 @@
-const cron = require('node-cron');
-const { cacheClient } = require('../config/redis');
+﻿const cron = require('node-cron');
 const File = require('../files/file.model');
+const docManager = require('./document.manager');
 const logger = require('../utils/logger');
 
-const startSnapshotWorker = () => {
-  // Run every 5 minutes to sweep/dump active memory contents to MongoDB database
-  cron.schedule('*/5 * * * *', async () => {
-    logger.info('⏰ Snapshot Worker: Initiating database sweep...');
-    try {
-      const keys = await cacheClient.keys('doc:*');
-      if (keys.length === 0) {
-        logger.info('⏰ Snapshot Worker: No dirty files to persist.');
-        return;
-      }
+let cronJob = null;
 
-      for (const key of keys) {
-        try {
-          const fileId = key.split(':')[1];
-          const data = await cacheClient.get(key);
-          if (!data) continue;
+const persistDocument = async (fileId) => {
+  try {
+    const doc = await docManager.getOrCreateDocument(fileId);
+    if (!doc) return;
 
-          const { content, version } = JSON.parse(data);
+    await File.findByIdAndUpdate(fileId, {
+      content: doc.content,
+      version: doc.version
+    });
 
-          // Update MongoDB file payload
-          await File.findByIdAndUpdate(fileId, {
-            content,
-            version
-          });
-
-          logger.debug(`💾 Snapshot saved: ${fileId} (Version: ${version})`);
-        } catch (fileErr) {
-          logger.error(`❌ Snapshot sweep failed for key ${key}:`, fileErr);
-        }
-      }
-    } catch (err) {
-      logger.error('❌ Snapshot Worker experienced database connectivity error:', err);
-    }
-  });
+    await docManager.markCleanDoc(fileId);
+    logger.debug(`💾 Document persisted: ${fileId} (v${doc.version})`);
+  } catch (err) {
+    logger.error(`Snapshot persist failed for ${fileId}:`, err);
+  }
 };
 
-module.exports = { startSnapshotWorker };
+const flushAllDirtyDocuments = async () => {
+  try {
+    const dirtyFiles = await docManager.getDirtyDocs();
+    if (!dirtyFiles || dirtyFiles.length === 0) {
+      return 0;
+    }
+
+    logger.info(`💾 Flushing ${dirtyFiles.length} dirty documents to MongoDB...`);
+    for (const fileId of dirtyFiles) {
+      await persistDocument(fileId);
+    }
+    logger.info(`✅ Successfully flushed ${dirtyFiles.length} documents.`);
+    return dirtyFiles.length;
+  } catch (err) {
+    logger.error('Error during flushAllDirtyDocuments:', err);
+    return 0;
+  }
+};
+
+const startSnapshotWorker = () => {
+  // Sweep dirty documents every 1 minute
+  cronJob = cron.schedule('*/1 * * * *', async () => {
+    try {
+      await flushAllDirtyDocuments();
+    } catch (err) {
+      logger.error('Snapshot Worker periodic sweep error:', err);
+    }
+  });
+
+  logger.info('🕒 Snapshot worker scheduled (1-min interval).');
+};
+
+const stopSnapshotWorker = () => {
+  if (cronJob) {
+    cronJob.stop();
+  }
+};
+
+module.exports = {
+  persistDocument,
+  flushAllDirtyDocuments,
+  startSnapshotWorker,
+  stopSnapshotWorker
+};

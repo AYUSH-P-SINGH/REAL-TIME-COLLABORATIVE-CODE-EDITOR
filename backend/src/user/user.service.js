@@ -1,7 +1,9 @@
-const User = require('./user.model');
+﻿const User = require('./user.model');
 
 const findByEmail = async (email) => {
-  return User.findOne({ email });
+  if (!email) return null;
+  const normalizedEmail = email.toLowerCase().trim();
+  return User.findOne({ email: normalizedEmail });
 };
 
 const findById = async (id) => {
@@ -9,6 +11,9 @@ const findById = async (id) => {
 };
 
 const createUser = async (userData) => {
+  if (userData.email) {
+    userData.email = userData.email.toLowerCase().trim();
+  }
   return User.create(userData);
 };
 

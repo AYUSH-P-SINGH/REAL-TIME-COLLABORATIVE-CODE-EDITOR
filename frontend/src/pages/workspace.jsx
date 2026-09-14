@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../services/api';
 import Navbar from '../components/navigation/navbar';
 import FileExplorer from '../components/FileTree/FileExplorer';
 import CodeEditor from '../components/editor/codeeditor';
 import AvatarGroup from '../components/Shared/AvatarGroup';
-import { ArrowLeft, UserPlus, Activity, Menu, X, Command, Code2, Plus, HelpCircle } from 'lucide-react';
+import { ArrowLeft, UserPlus, Activity, Menu, X, Command, Code2, HelpCircle } from 'lucide-react';
 import GlassCard from '../components/Shared/GlassCard';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../context/ToastContext';
@@ -473,7 +473,7 @@ const Workspace = () => {
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: '#fff', fontWeight: '600' }}>
-                      {log.type === 'presence' ? '👥 Presence' : log.type === 'edit' ? '📝 Edit' : '⚙️ System'}
+                      {log.type === 'presence' ? 'ðŸ‘¥ Presence' : log.type === 'edit' ? 'ðŸ“ Edit' : 'âš™ï¸ System'}
                     </span>
                     <span style={{ fontSize: '0.65rem', color: 'hsl(var(--text-muted))' }}>{log.time}</span>
                   </div>
@@ -597,3 +597,4 @@ const Workspace = () => {
 
 export default Workspace;
 export { Workspace };
+

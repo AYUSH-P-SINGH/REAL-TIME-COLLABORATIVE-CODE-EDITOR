@@ -1,24 +1,27 @@
-const bcrypt = require('bcryptjs');
+﻿const bcrypt = require('bcryptjs');
 const userService = require('../user/user.service');
 const jwtHelper = require('../utils/jwt');
 const { registerSchema, loginSchema } = require('../utils/validation.schemas');
 
 const register = async (name, email, password) => {
-  registerSchema.parse({ name, email, password });
+  const normalizedEmail = email ? email.toLowerCase().trim() : '';
+  const trimmedName = name ? name.trim() : '';
 
-  const existingUser = await userService.findByEmail(email);
+  registerSchema.parse({ name: trimmedName, email: normalizedEmail, password });
+
+  const existingUser = await userService.findByEmail(normalizedEmail);
   if (existingUser) {
-    const err = new Error('User with this email already exists');
+    const err = new Error('An account with this email already exists. Please sign in instead.');
     err.statusCode = 409;
     throw err;
   }
 
   const hashedPassword = await bcrypt.hash(password, 12);
-  const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`;
+  const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(trimmedName)}`;
 
   const user = await userService.createUser({
-    name,
-    email,
+    name: trimmedName,
+    email: normalizedEmail,
     password: hashedPassword,
     avatarUrl,
   });
@@ -37,18 +40,20 @@ const register = async (name, email, password) => {
 };
 
 const login = async (email, password) => {
-  loginSchema.parse({ email, password });
+  const normalizedEmail = email ? email.toLowerCase().trim() : '';
 
-  const user = await userService.findByEmail(email);
+  loginSchema.parse({ email: normalizedEmail, password });
+
+  const user = await userService.findByEmail(normalizedEmail);
   if (!user) {
-    const err = new Error('Invalid email or password');
+    const err = new Error('No account found with this email. Please click "Register" to create your account.');
     err.statusCode = 401;
     throw err;
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
-    const err = new Error('Invalid email or password');
+    const err = new Error('Incorrect password. Please verify and try again.');
     err.statusCode = 401;
     throw err;
   }

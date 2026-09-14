@@ -1,4 +1,6 @@
-const express = require('express');
+﻿const express = require('express');
+const mongoose = require('mongoose');
+const { pubClient, cacheClient } = require('./config/redis');
 const { setupVersioning } = require('./config/versioning');
 const errorHandler = require('./middlewares/error.middleware');
 const { setupSecurityMiddleware } = require('./config/security');
@@ -25,9 +27,29 @@ app.use('/api/', apiLimiter);
 app.use('/api/files/upload', fileLimiter);
 app.use('/api/files/upload', checkFileSize);
 
-// Health check endpoint
+// Liveness health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Readiness health check (validates MongoDB and Redis connections)
+app.get('/health/ready', (req, res) => {
+  const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  const redisPubStatus = pubClient && pubClient.isOpen ? 'connected' : 'disconnected';
+  const redisCacheStatus = cacheClient && cacheClient.isOpen ? 'connected' : 'disconnected';
+
+  const isReady = mongoStatus === 'connected' && redisPubStatus === 'connected' && redisCacheStatus === 'connected';
+
+  const statusCode = isReady ? 200 : 503;
+  return res.status(statusCode).json({
+    status: isReady ? 'ready' : 'degraded',
+    services: {
+      mongodb: mongoStatus,
+      redisPub: redisPubStatus,
+      redisCache: redisCacheStatus,
+    },
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Master Routing Gateway

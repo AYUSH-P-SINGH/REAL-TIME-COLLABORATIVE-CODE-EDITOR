@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+﻿import React, { useRef, useState, useEffect } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import { useDocSync } from '../../hooks/useDocSync';
 import { usePresence } from '../../hooks/usepresence';
@@ -138,6 +138,7 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
               Initialising Monaco Engine...
             </div>
           }
+          onMount={handleEditorDidMount}
           editorDidMount={handleEditorDidMount}
           onChange={(value, event) => handleLocalChange(value, event)}
         />

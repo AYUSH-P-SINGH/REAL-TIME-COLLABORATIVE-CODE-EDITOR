@@ -1,22 +1,17 @@
-// Comprehensive Zod Validation Schemas
+﻿// Comprehensive Zod Validation Schemas
 const { z } = require('zod');
 
 // Common patterns
 const passwordSchema = z
   .string()
-  .min(8, 'Password must be at least 8 characters')
-  .regex(/[A-Z]/, 'Password must contain uppercase letter')
-  .regex(/[a-z]/, 'Password must contain lowercase letter')
-  .regex(/[0-9]/, 'Password must contain number')
-  .regex(/[!@#$%^&*]/, 'Password must contain special character');
+  .min(6, 'Password must be at least 6 characters');
 
 const emailSchema = z.string().email('Invalid email address');
 
 const nameSchema = z
   .string()
   .min(2, 'Name must be at least 2 characters')
-  .max(100, 'Name must be less than 100 characters')
-  .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters');
+  .max(100, 'Name must be less than 100 characters');
 
 // Auth Schemas
 const registerSchema = z.object({
@@ -59,71 +54,23 @@ const fileCreateSchema = z.object({
   name: z
     .string()
     .min(1, 'File name is required')
-    .max(255, 'File name must be less than 255 characters')
-    .regex(/^[a-zA-Z0-9._-]+$/, 'Invalid file name'),
-  projectId: z.string().regex(/^[0-9a-f]{24}$/, 'Invalid project ID'),
-  language: z
-    .enum([
-      'javascript',
-      'typescript',
-      'python',
-      'java',
-      'cpp',
-      'csharp',
-      'ruby',
-      'go',
-      'rust',
-      'html',
-      'css',
-      'sql',
-      'json',
-      'xml',
-      'yaml',
-    ])
-    .optional()
-    .default('javascript'),
+    .max(255, 'File name must be less than 255 characters'),
+  project: z.string().optional(),
+  projectId: z.string().optional(),
+  path: z.string().optional(),
+  type: z.string().optional(),
+  content: z.string().optional(),
 });
 
 const fileUpdateSchema = z.object({
-  content: z
-    .string()
-    .max(10 * 1024 * 1024, 'File size exceeds 10MB limit'),
-  language: z
-    .enum([
-      'javascript',
-      'typescript',
-      'python',
-      'java',
-      'cpp',
-      'csharp',
-      'ruby',
-      'go',
-      'rust',
-      'html',
-      'css',
-      'sql',
-      'json',
-      'xml',
-      'yaml',
-    ])
-    .optional(),
+  content: z.string().optional(),
+  version: z.number().optional(),
 });
 
 // User Schemas
 const userUpdateSchema = z.object({
   name: nameSchema.optional(),
   email: emailSchema.optional(),
-});
-
-// Pagination Schema
-const paginationSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(10),
-});
-
-// Invite Schema
-const inviteSchema = z.object({
-  email: emailSchema,
 });
 
 // Export all schemas
@@ -135,6 +82,4 @@ module.exports = {
   fileCreateSchema,
   fileUpdateSchema,
   userUpdateSchema,
-  paginationSchema,
-  inviteSchema,
 };

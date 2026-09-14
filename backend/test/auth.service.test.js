@@ -1,4 +1,4 @@
-// Backend Auth Service Tests
+﻿// Backend Auth Service Tests
 const { request, app } = require('./setup');
 const User = require('../src/user/user.model');
 const authService = require('../src/auth/auth.service');
@@ -46,7 +46,7 @@ describe('Authentication Service', () => {
           userData.email,
           'AnotherPass123!'
         )
-      ).rejects.toThrow('User already exists');
+      ).rejects.toThrow('An account with this email already exists');
     });
 
     it('should fail with invalid email', async () => {
@@ -89,13 +89,13 @@ describe('Authentication Service', () => {
     it('should fail with incorrect password', async () => {
       await expect(
         authService.login('test@example.com', 'WrongPassword')
-      ).rejects.toThrow('Invalid credentials');
+      ).rejects.toThrow('Incorrect password');
     });
 
     it('should fail with non-existent user', async () => {
       await expect(
         authService.login('nonexistent@example.com', 'SecurePass123!')
-      ).rejects.toThrow('Invalid credentials');
+      ).rejects.toThrow('No account found with this email');
     });
   });
 });

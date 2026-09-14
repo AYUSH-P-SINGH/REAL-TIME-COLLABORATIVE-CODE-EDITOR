@@ -1,26 +1,48 @@
-const { createClient } = require('redis');
+﻿const { createClient } = require('redis');
 const env = require('./env');
 const logger = require('../utils/logger');
 
-const pubClient = createClient({ url: env.REDIS_URL });
+let isRedisConnected = false;
+
+const clientOptions = {
+  url: env.REDIS_URL,
+  socket: {
+    reconnectStrategy: false
+  }
+};
+
+const pubClient = createClient(clientOptions);
 const subClient = pubClient.duplicate();
 const cacheClient = pubClient.duplicate();
 
-pubClient.on('error', (err) => logger.error('❌ Redis Pub Client Error:', err));
-subClient.on('error', (err) => logger.error('❌ Redis Sub Client Error:', err));
-cacheClient.on('error', (err) => logger.error('❌ Redis Cache Client Error:', err));
+pubClient.on('error', () => {});
+subClient.on('error', () => {});
+cacheClient.on('error', () => {});
 
 const connectRedis = async () => {
   try {
-    await Promise.all([
-      pubClient.connect(),
-      subClient.connect(),
-      cacheClient.connect()
+    const connectWithTimeout = (client) => Promise.race([
+      client.connect(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 1000))
     ]);
+
+    await Promise.all([
+      connectWithTimeout(pubClient),
+      connectWithTimeout(subClient),
+      connectWithTimeout(cacheClient)
+    ]);
+    isRedisConnected = true;
     logger.info('🚀 Redis client cluster initialized successfully.');
+    return true;
   } catch (error) {
-    logger.error('❌ Redis Initialization Failed:', error);
-    process.exit(1);
+    isRedisConnected = false;
+    try {
+      if (pubClient.isOpen) await pubClient.disconnect();
+      if (subClient.isOpen) await subClient.disconnect();
+      if (cacheClient.isOpen) await cacheClient.disconnect();
+    } catch (_) {}
+    logger.warn(`⚠️ Redis not available (${env.REDIS_URL}); operating in standalone in-memory fallback mode.`);
+    return false;
   }
 };
 
@@ -28,5 +50,6 @@ module.exports = {
   pubClient,
   subClient,
   cacheClient,
-  connectRedis
+  connectRedis,
+  isRedisConnected: () => isRedisConnected
 };

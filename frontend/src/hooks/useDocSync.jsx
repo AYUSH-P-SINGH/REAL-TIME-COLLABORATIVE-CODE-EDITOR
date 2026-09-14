@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { debounce, getHashColor } from '../utils/helpers';
 import diff_match_patch from 'diff-match-patch';
@@ -7,6 +7,7 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
   const { socket } = useSocket();
   const isApplyingRemoteChange = useRef(false);
   const lastSyncedContentRef = useRef('');
+  const timeoutRefs = useRef(new Set());
 
   // Debounce saving the differential patch to the server to minimize network overhead
   const debouncedPatchSync = useRef(
@@ -33,9 +34,12 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
     // Join the room for the active file
     socket.emit('room:join', { fileId });
 
-    // 1. Initial full content sync from server (with Connection State Recovery logic)
-    socket.on('code:sync', ({ content }) => {
+    // 1. Initial full content sync from server
+    const currentTimers = timeoutRefs.current;
+
+    const handleCodeSync = ({ content }) => {
       const editor = editorRef.current;
+      if (!editor) return;
       const model = editor.getModel();
       
       if (model) {
@@ -43,9 +47,7 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
         // If we have offline changes since last sync, merge them instead of overwriting
         if (lastSyncedContentRef.current && currentVal !== lastSyncedContentRef.current && currentVal !== content) {
           const dmp = new diff_match_patch();
-          // Diff between last sync copy and our current offline copy
           const offlinePatches = dmp.patch_make(lastSyncedContentRef.current, currentVal);
-          // Apply our offline changes onto the new server copy
           const [mergedVal] = dmp.patch_apply(offlinePatches, content);
           
           isApplyingRemoteChange.current = true;
@@ -53,7 +55,6 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
           lastSyncedContentRef.current = mergedVal;
           isApplyingRemoteChange.current = false;
           
-          // Stream the merged results back to the server so everyone is synchronized
           const syncPatches = dmp.patch_make(content, mergedVal);
           const syncPatchText = dmp.patch_toText(syncPatches);
           if (syncPatchText) {
@@ -71,18 +72,17 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
           lastSyncedContentRef.current = content;
         }
       }
-    });
+    };
 
     // 2. Incoming keystroke edit delta operations
-    socket.on('code:edit', ({ change, senderId }) => {
+    const handleCodeEdit = ({ change, senderId }) => {
       const editor = editorRef.current;
+      if (!editor) return;
       const model = editor.getModel();
       
       if (model && change && !isApplyingRemoteChange.current) {
-        // Skip updating full content broadcasts
         if (change.fullContent !== undefined) return;
 
-        // If it's a patch from a merged sync, apply it
         if (change.patch) {
           isApplyingRemoteChange.current = true;
           const currentVal = model.getValue();
@@ -98,7 +98,6 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
           return;
         }
 
-        // Apply instant micro delta change locally (keystroke delta)
         isApplyingRemoteChange.current = true;
         
         try {
@@ -116,14 +115,12 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
             }],
             () => null
           );
-          // Keep synced tracking matching the editor content
           lastSyncedContentRef.current = model.getValue();
 
           // Highlight recently modified text regions for user clarity
           if (change.startLine && change.startColumn) {
             const highlightId = `peer-highlight-${senderId}`;
             
-            // Inject dynamic style tag for this peer if not exists
             let styleTag = document.getElementById(highlightId);
             if (!styleTag) {
               styleTag = document.createElement('style');
@@ -146,7 +143,6 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
               change.endColumn || (change.startColumn + (change.text?.length || 1))
             );
 
-            // Set decoration
             const decs = editor.deltaDecorations([], [{
               range: highlightRange,
               options: {
@@ -155,27 +151,35 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
               }
             }]);
 
-            // Clean up highlighted region after 2.5 seconds
-            setTimeout(() => {
+            const t = setTimeout(() => {
+              timeoutRefs.current.delete(t);
               try {
                 editor.deltaDecorations(decs, []);
               } catch (e) {
-                // Editor might be unmounted
+                // Ignore
               }
             }, 2500);
+            timeoutRefs.current.add(t);
           }
         } catch (e) {
-          // Fallback to full value if pushEditOperations fails
+          // Ignore
         }
         
         isApplyingRemoteChange.current = false;
       }
-    });
+    };
+
+    socket.on('code:sync', handleCodeSync);
+    socket.on('code:edit', handleCodeEdit);
 
     return () => {
-      socket.off('code:sync');
-      socket.off('code:edit');
+      socket.off('code:sync', handleCodeSync);
+      socket.off('code:edit', handleCodeEdit);
       socket.emit('room:leave', { fileId });
+
+      // Clear all active timeouts
+      currentTimers.forEach(t => clearTimeout(t));
+      currentTimers.clear();
     };
   }, [fileId, socket, editorRef, monacoRef]);
 
@@ -183,7 +187,6 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
   const handleLocalChange = (value, event) => {
     if (isApplyingRemoteChange.current || !socket || !event || !event.changes) return;
 
-    // Stream instant coordinate updates to other users
     event.changes.forEach(change => {
       socket.emit('code:edit', {
         fileId,
@@ -197,9 +200,9 @@ export const useDocSync = (fileId, editorRef, monacoRef) => {
       });
     });
 
-    // Queue differential patch sync to keep Redis copy matching active text
     debouncedPatchSync(fileId, value);
   };
 
   return { handleLocalChange };
 };
+

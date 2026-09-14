@@ -1,10 +1,9 @@
-import React from 'react';
-import { Share2, Monitor, Code, Copy, Check } from 'lucide-react';
+﻿import React from 'react';
+import { Share2, Monitor, Code } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 const EditorHeader = ({ fileName, fileLanguage, editorTheme, setEditorTheme }) => {
   const { addToast } = useToast();
-  const [copied, setCopied] = React.useState(false);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -62,8 +61,8 @@ const EditorHeader = ({ fileName, fileLanguage, editorTheme, setEditorTheme }) =
           >
             <option value="vs-dark">Dark Theme</option>
             <option value="light">Light Theme</option>
-            <option value="cyberpunk">⚡ Cyberpunk</option>
-            <option value="synthwave">🌌 Synthwave</option>
+            <option value="cyberpunk">Cyberpunk</option>
+            <option value="synthwave">Synthwave</option>
           </select>
         </div>
 

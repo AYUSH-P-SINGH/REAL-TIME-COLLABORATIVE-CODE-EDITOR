@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+﻿import { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { getHashColor } from '../utils/helpers';
 
@@ -13,19 +13,19 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
     const editor = editorRef.current;
 
     // Listen to remote cursor moves
-    socket.on('cursor:move', ({ userId, userName, cursor }) => {
-      if (userId === socket.id) return; // Don't track own cursor
+    const handleCursorMove = ({ userId, userName, cursor }) => {
+      if (userId === socket.id) return;
       setPeers(prev => ({
         ...prev,
         [userId]: {
-          userName,
+          userName: userName || 'Anonymous',
           cursor,
-          color: getHashColor(userName)
+          color: getHashColor(userName || userId)
         }
       }));
-    });
+    };
 
-    socket.on('presence:update', ({ userId, action, _userName }) => {
+    const handlePresenceUpdate = ({ userId, action }) => {
       if (action === 'leave') {
         setPeers(prev => {
           const clone = { ...prev };
@@ -33,9 +33,12 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
           return clone;
         });
       }
-    });
+    };
 
-    // Listen to local cursor movement events in Monaco and stream coordinate values
+    socket.on('cursor:move', handleCursorMove);
+    socket.on('presence:update', handlePresenceUpdate);
+
+    // Listen to local cursor movement events in Monaco
     const disposable = editor.onDidChangeCursorPosition(e => {
       socket.emit('cursor:move', {
         fileId,
@@ -47,17 +50,26 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
     });
 
     return () => {
-      socket.off('cursor:move');
-      socket.off('presence:update');
-      disposable.dispose();
-      
+      socket.off('cursor:move', handleCursorMove);
+      socket.off('presence:update', handlePresenceUpdate);
+      if (disposable && typeof disposable.dispose === 'function') {
+        disposable.dispose();
+      }
+
       // Clean up decorations on unmount
       if (editor && decorationsRef.current.length > 0) {
         try {
           editor.deltaDecorations(decorationsRef.current, []);
         } catch (e) {
-          // Editor might be disposed already
+          // Editor might be disposed
         }
+        decorationsRef.current = [];
+      }
+
+      // Clean up cursor style tag
+      const styleTag = document.getElementById('peer-cursor-styles');
+      if (styleTag) {
+        styleTag.remove();
       }
     };
   }, [fileId, socket, editorRef, monacoRef]);
@@ -69,15 +81,29 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
 
-    // Inject dynamic CSS style tag for peer cursor colors & name tags
     const styleId = 'peer-cursor-styles';
     let styleTag = document.getElementById(styleId);
+
+    const peerEntries = Object.entries(peers);
+    if (peerEntries.length === 0) {
+      if (styleTag) styleTag.remove();
+      if (decorationsRef.current.length > 0) {
+        try {
+          decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+        } catch (e) {
+          // Ignore
+        }
+      }
+      return;
+    }
+
     if (!styleTag) {
       styleTag = document.createElement('style');
       styleTag.id = styleId;
       document.head.appendChild(styleTag);
     }
-    styleTag.innerHTML = Object.entries(peers)
+
+    styleTag.innerHTML = peerEntries
       .map(([userId, peer]) => `
         .peer-cursor-${userId} {
           border-left: 2px solid ${peer.color} !important;
@@ -102,8 +128,7 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
       `)
       .join('\n');
 
-    // Create Monaco decorations for cursors
-    const newDecorations = Object.entries(peers)
+    const newDecorations = peerEntries
       .filter(([_, peer]) => peer.cursor && peer.cursor.line && peer.cursor.ch)
       .map(([userId, peer]) => ({
         range: new monaco.Range(
@@ -121,7 +146,7 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
     try {
       decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations);
     } catch (e) {
-      // Editor might be disposed or in invalid state
+      // Ignore
     }
   }, [peers, editorRef, monacoRef]);
 

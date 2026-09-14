@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useAuth } from '../context/authcontext';
 import API from '../services/api';
-import GlassCard from '../components/Shared/GlassCard';
-import NeonButton from '../components/Shared/NeonButton';
 import { useToast } from '../context/ToastContext';
-import { Code2, Zap, Users, ShieldCheck, Terminal, ArrowRight, UserCheck, Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import { Code2, Users, ShieldCheck, Terminal, ArrowRight, Eye, EyeOff, Lock, Mail, User, Sparkles } from 'lucide-react';
 
 const Landing = () => {
   const { loginSession } = useAuth();
@@ -24,16 +22,19 @@ const Landing = () => {
     e.preventDefault();
     setError('');
 
-    // Input Validation
-    if (isRegister && name.trim().length < 2) {
-      setError('Name must be at least 2 characters long.');
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPassword = password.trim();
+    const cleanName = name.trim();
+
+    if (isRegister && cleanName.length < 2) {
+      setError('Please enter your full name (at least 2 characters).');
       return;
     }
-    if (!email.includes('@') || !email.includes('.')) {
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
       setError('Please provide a valid email address.');
       return;
     }
-    if (password.length < 6) {
+    if (cleanPassword.length < 6) {
       setError('Password must be at least 6 characters long.');
       return;
     }
@@ -42,16 +43,18 @@ const Landing = () => {
 
     try {
       const endpoint = isRegister ? '/auth/register' : '/auth/login';
-      const payload = isRegister ? { name, email, password } : { email, password };
+      const payload = isRegister 
+        ? { name: cleanName, email: cleanEmail, password: cleanPassword } 
+        : { email: cleanEmail, password: cleanPassword };
 
       const res = await API.post(endpoint, payload);
       if (res.data.success) {
         const { user, token } = res.data.data;
-        addToast(isRegister ? 'Account created successfully! Welcome aboard.' : `Welcome back, ${user.name}!`, 'success');
+        addToast(isRegister ? 'Account created successfully! Welcome to CodeSync.' : `Welcome back, ${user.name}!`, 'success');
         loginSession(user, token);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Authentication failed. Please verify credentials.';
+      const errMsg = err.response?.data?.error?.message || err.response?.data?.message || 'Authentication failed. Please verify credentials.';
       setError(errMsg);
       addToast(errMsg, 'error');
     } finally {
@@ -71,11 +74,19 @@ const Landing = () => {
         loginSession(user, token);
       }
     } catch (err) {
-      // Fallback demo credentials if endpoint fails
-      setEmail('demo@codesync.io');
-      setPassword('demopass123');
-      if (isRegister) setIsRegister(false);
-      addToast('Demo credentials filled! Click Sign In to proceed.', 'info');
+      try {
+        const demoRes = await API.post('/auth/login', {
+          email: 'demo@codesync.io',
+          password: 'demopass123'
+        });
+        if (demoRes.data.success) {
+          const { user, token } = demoRes.data.data;
+          loginSession(user, token);
+        }
+      } catch (subErr) {
+        setError('Demo login unavailable. Please create an account or sign in.');
+        addToast('Please enter credentials or register.', 'info');
+      }
     } finally {
       setDemoLoading(false);
     }
@@ -93,186 +104,172 @@ const Landing = () => {
       overflowX: 'hidden',
       padding: '40px 20px'
     }}>
-      {/* Background ambient glows */}
+      {/* Ambient background glow elements */}
       <div className="mesh-glow" style={{ width: '500px', height: '500px', backgroundColor: 'hsl(var(--accent-cyan))', top: '-15%', left: '-10%' }} />
       <div className="mesh-glow" style={{ width: '500px', height: '500px', backgroundColor: 'hsl(var(--accent-purple))', bottom: '-15%', right: '-10%' }} />
 
       <div style={{
-        maxWidth: '1100px',
+        maxWidth: '1200px',
         width: '100%',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
         gap: '48px',
         alignItems: 'center',
-        zIndex: 1,
-        position: 'relative'
+        zIndex: 1
       }}>
-        
-        {/* Left Column: Product Value Highlights */}
+        {/* Left Column: Product Information */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <span className="badge badge-cyan">
-              <Zap size={12} />
-              PRODUCTION-READY AUTHENTICATION
-            </span>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: 'hsl(var(--accent-cyan) / 0.1)',
+            border: '1px solid hsl(var(--accent-cyan) / 0.3)',
+            borderRadius: '9999px',
+            padding: '6px 14px',
+            color: 'hsl(var(--accent-cyan))',
+            fontSize: '0.8rem',
+            fontWeight: '600',
+            width: 'fit-content'
+          }}>
+            <Sparkles size={14} />
+            <span>DEVELOPER COLLABORATION PLATFORM</span>
           </div>
 
           <h1 style={{
-            fontSize: 'clamp(2.2rem, 5vw, 3.5rem)',
+            fontSize: 'clamp(2.2rem, 4vw, 3.4rem)',
             fontWeight: '800',
-            lineHeight: 1.15,
+            lineHeight: '1.15',
             letterSpacing: '-0.02em',
             color: '#fff'
           }}>
-            Real-Time Code Collaboration <br />
-            <span style={{
-              background: 'linear-gradient(135deg, hsl(var(--accent-cyan)), hsl(var(--accent-purple)), hsl(var(--accent-pink)))',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}>
-              Without Boundaries.
-            </span>
+            Real-Time Collaborative <br />
+            <span className="gradient-text">Code Editor.</span>
           </h1>
 
-          <p style={{ fontSize: '1.05rem', color: 'hsl(var(--text-secondary))', lineHeight: 1.6, maxWidth: '520px' }}>
-            Engineered for modern software teams. Edit code simultaneously with zero latency, live cursor synchronization, granular workspace management, and Monaco syntax highlighting.
+          <p style={{
+            fontSize: '1.05rem',
+            color: 'hsl(var(--text-secondary))',
+            lineHeight: '1.65',
+            maxWidth: '540px'
+          }}>
+            Code together, in real time. CodeSync lets multiple developers work on the same project, edit files simultaneously, and see collaborators&apos; presence and cursor activity in real time.
           </p>
 
+          {/* Feature Grid */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: '16px',
             marginTop: '12px'
           }}>
-            <div style={{
-              padding: '16px',
-              backgroundColor: 'hsl(var(--bg-surface) / 0.6)',
-              border: '1px solid hsl(var(--border-subtle))',
-              borderRadius: '10px',
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start'
-            }}>
-              <Zap size={20} color="hsl(var(--accent-cyan))" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Multiplayer Sync</h4>
-                <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: 1.4 }}>Instant delta synchronization powered by WebSockets.</p>
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', border: '1px solid hsl(var(--border-subtle))' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <Terminal size={18} color="hsl(var(--accent-cyan))" />
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#fff' }}>Real-Time Collaboration</h4>
               </div>
+              <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
+                Synchronize code changes between connected collaborators using WebSockets.
+              </p>
             </div>
 
-            <div style={{
-              padding: '16px',
-              backgroundColor: 'hsl(var(--bg-surface) / 0.6)',
-              border: '1px solid hsl(var(--border-subtle))',
-              borderRadius: '10px',
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start'
-            }}>
-              <Users size={20} color="hsl(var(--accent-purple))" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Live Presence</h4>
-                <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: 1.4 }}>See peer selection cursors and active workspace activity live.</p>
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', border: '1px solid hsl(var(--border-subtle))' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <Users size={18} color="hsl(var(--accent-purple))" />
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#fff' }}>Live Presence</h4>
               </div>
+              <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
+                See collaborators, cursor positions, and workspace activity in real time.
+              </p>
             </div>
 
-            <div style={{
-              padding: '16px',
-              backgroundColor: 'hsl(var(--bg-surface) / 0.6)',
-              border: '1px solid hsl(var(--border-subtle))',
-              borderRadius: '10px',
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start'
-            }}>
-              <Terminal size={20} color="hsl(var(--accent-emerald))" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Monaco Engine</h4>
-                <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: 1.4 }}>VS Code core editor with themes, keybindings & autocompletion.</p>
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', border: '1px solid hsl(var(--border-subtle))' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <Code2 size={18} color="hsl(var(--accent-emerald))" />
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#fff' }}>Monaco Editor</h4>
               </div>
+              <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
+                Powerful code editing with syntax highlighting, themes, and developer-focused features.
+              </p>
             </div>
 
-            <div style={{
-              padding: '16px',
-              backgroundColor: 'hsl(var(--bg-surface) / 0.6)',
-              border: '1px solid hsl(var(--border-subtle))',
-              borderRadius: '10px',
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start'
-            }}>
-              <ShieldCheck size={20} color="hsl(var(--accent-pink))" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>Secure JWT Auth</h4>
-                <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: 1.4 }}>Encrypted auth tokens & permission-scoped project trees.</p>
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', border: '1px solid hsl(var(--border-subtle))' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <ShieldCheck size={18} color="hsl(var(--accent-pink))" />
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#fff' }}>Secure Authentication</h4>
               </div>
+              <p style={{ fontSize: '0.8rem', color: 'hsl(var(--text-muted))', lineHeight: '1.4' }}>
+                JWT-based authentication with protected project and workspace access.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Auth Form Card */}
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <GlassCard style={{
-            width: '100%',
-            maxWidth: '420px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '24px',
-            padding: '32px 28px',
+        {/* Right Column: Authentication Card */}
+        <div style={{ width: '100%', maxWidth: '440px', margin: '0 auto' }}>
+          <div className="glass-panel" style={{
+            padding: '36px 32px',
+            borderRadius: '20px',
             border: '1px solid hsl(var(--border-glow))',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)'
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            position: 'relative'
           }}>
-            {/* Header Icon */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, hsl(var(--accent-cyan)), hsl(var(--accent-purple)))',
-                marginBottom: '12px',
-                color: '#000'
-              }}>
-                <Code2 size={24} />
-              </div>
-              <h2 style={{
-                fontSize: '1.6rem',
-                fontWeight: '700',
-                color: '#fff',
-                marginBottom: '6px'
-              }}>
-                {isRegister ? 'Create your Account' : 'Welcome back'}
-              </h2>
-              <p style={{ fontSize: '0.85rem', color: 'hsl(var(--text-muted))' }}>
-                {isRegister ? 'Sign up to start collaborating on live workspaces' : 'Enter your credentials to access your workspaces'}
-              </p>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, hsl(var(--accent-cyan)), hsl(var(--accent-purple)))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+              boxShadow: 'var(--glow-cyan)'
+            }}>
+              <Code2 size={24} color="#000" />
             </div>
 
-            {/* Auth Mode Tab Bar */}
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: '700',
+              textAlign: 'center',
+              marginBottom: '6px',
+              color: '#fff'
+            }}>
+              {isRegister ? 'Create an account' : 'Welcome back'}
+            </h2>
+            <p style={{
+              fontSize: '0.85rem',
+              color: 'hsl(var(--text-muted))',
+              textAlign: 'center',
+              marginBottom: '24px'
+            }}>
+              {isRegister ? 'Start collaborating on shared code repositories' : 'Sign in to access your projects and workspaces'}
+            </p>
+
+            {/* Sign In vs Register Toggle */}
             <div style={{
-              display: 'flex',
-              backgroundColor: 'hsl(var(--bg-surface))',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              backgroundColor: 'hsl(var(--bg-deep))',
               padding: '4px',
-              borderRadius: '8px',
+              borderRadius: '10px',
+              marginBottom: '24px',
               border: '1px solid hsl(var(--border-subtle))'
             }}>
               <button
                 type="button"
                 onClick={() => { setIsRegister(false); setError(''); }}
                 style={{
-                  flex: 1,
-                  padding: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
                   border: 'none',
-                  borderRadius: '6px',
                   fontSize: '0.85rem',
                   fontWeight: '600',
                   cursor: 'pointer',
+                  transition: 'all 0.2s ease',
                   backgroundColor: !isRegister ? 'hsl(var(--bg-card))' : 'transparent',
                   color: !isRegister ? '#fff' : 'hsl(var(--text-muted))',
-                  boxShadow: !isRegister ? '0 2px 8px rgba(0,0,0,0.4)' : 'none',
-                  transition: 'all 0.2s ease'
+                  boxShadow: !isRegister ? '0 2px 8px rgba(0,0,0,0.3)' : 'none'
                 }}
               >
                 Sign In
@@ -281,33 +278,34 @@ const Landing = () => {
                 type="button"
                 onClick={() => { setIsRegister(true); setError(''); }}
                 style={{
-                  flex: 1,
-                  padding: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
                   border: 'none',
-                  borderRadius: '6px',
                   fontSize: '0.85rem',
                   fontWeight: '600',
                   cursor: 'pointer',
+                  transition: 'all 0.2s ease',
                   backgroundColor: isRegister ? 'hsl(var(--bg-card))' : 'transparent',
                   color: isRegister ? '#fff' : 'hsl(var(--text-muted))',
-                  boxShadow: isRegister ? '0 2px 8px rgba(0,0,0,0.4)' : 'none',
-                  transition: 'all 0.2s ease'
+                  boxShadow: isRegister ? '0 2px 8px rgba(0,0,0,0.3)' : 'none'
                 }}
               >
                 Register
               </button>
             </div>
 
+            {/* Error Message */}
             {error && (
               <div style={{
-                backgroundColor: 'hsl(var(--accent-pink) / 0.1)',
-                border: '1px solid hsl(var(--accent-pink) / 0.3)',
-                color: 'hsl(var(--accent-pink))',
-                padding: '10px 14px',
+                backgroundColor: 'hsl(340 82% 52% / 0.15)',
+                border: '1px solid hsl(340 82% 52% / 0.4)',
                 borderRadius: '8px',
-                fontSize: '0.825rem',
+                padding: '10px 14px',
+                color: '#f87171',
+                fontSize: '0.82rem',
+                marginBottom: '18px',
                 textAlign: 'center',
-                fontWeight: '500'
+                lineHeight: '1.4'
               }}>
                 {error}
               </div>
@@ -315,51 +313,81 @@ const Landing = () => {
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {isRegister && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>Full Name</label>
-                  <div style={{ position: 'relative' }}>
-                    <User size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '500', color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>
+                    Full Name
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <User size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '12px' }} />
                     <input
                       type="text"
-                      placeholder="e.g. Alex Morgan"
-                      className="input-field"
+                      placeholder="Jane Doe"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      style={{ paddingLeft: '40px' }}
                       required
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px 10px 38px',
+                        backgroundColor: 'hsl(var(--bg-deep))',
+                        border: '1px solid hsl(var(--border-subtle))',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        fontSize: '0.9rem',
+                        outline: 'none'
+                      }}
                     />
                   </div>
                 </div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>Email Address</label>
-                <div style={{ position: 'relative' }}>
-                  <Mail size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '500', color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>
+                  Email Address
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Mail size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '12px' }} />
                   <input
                     type="email"
                     placeholder="developer@example.com"
-                    className="input-field"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    style={{ paddingLeft: '40px' }}
                     required
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px 10px 38px',
+                      backgroundColor: 'hsl(var(--bg-deep))',
+                      border: '1px solid hsl(var(--border-subtle))',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontSize: '0.9rem',
+                      outline: 'none'
+                    }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', fontWeight: '500' }}>Password</label>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '500', color: 'hsl(var(--text-secondary))', marginBottom: '6px' }}>
+                  Password
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Lock size={16} color="hsl(var(--text-muted))" style={{ position: 'absolute', left: '12px' }} />
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••••••"
-                    className="input-field"
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    style={{ paddingLeft: '40px', paddingRight: '40px' }}
                     required
+                    style={{
+                      width: '100%',
+                      padding: '10px 38px 10px 38px',
+                      backgroundColor: 'hsl(var(--bg-deep))',
+                      border: '1px solid hsl(var(--border-subtle))',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      fontSize: '0.9rem',
+                      outline: 'none'
+                    }}
                   />
                   <button
                     type="button"
@@ -367,8 +395,6 @@ const Landing = () => {
                     style={{
                       position: 'absolute',
                       right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
                       background: 'none',
                       border: 'none',
                       color: 'hsl(var(--text-muted))',
@@ -381,41 +407,62 @@ const Landing = () => {
                   </button>
                 </div>
               </div>
-              
-              <NeonButton type="submit" disabled={loading || demoLoading} style={{ width: '100%', marginTop: '4px' }}>
-                {loading ? 'Authenticating...' : isRegister ? 'Create Free Account' : 'Sign In to Workspace'}
-                {!loading && <ArrowRight size={16} />}
-              </NeonButton>
 
-              <div style={{ textAlign: 'center', marginTop: '4px' }}>
-                <button
-                  type="button"
-                  onClick={handleDemoLogin}
-                  disabled={loading || demoLoading}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'hsl(var(--accent-cyan))',
-                    fontSize: '0.825rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <UserCheck size={14} /> {demoLoading ? 'Connecting Demo Account...' : 'Instant 1-Click Demo Login'}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  marginTop: '8px',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, hsl(var(--accent-cyan)), hsl(var(--accent-purple)))',
+                  color: '#000',
+                  fontWeight: '700',
+                  fontSize: '0.95rem',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'opacity 0.2s ease',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                <span>{loading ? 'Processing...' : (isRegister ? 'Create Account' : 'Sign In to Workspace')}</span>
+                <ArrowRight size={16} />
+              </button>
             </form>
-          </GlassCard>
-        </div>
 
+            {/* Try Demo Account */}
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={demoLoading}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'hsl(var(--accent-cyan))',
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  cursor: demoLoading ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  transition: 'background-color 0.2s ease'
+                }}
+              >
+                <span>⚡ {demoLoading ? 'Logging into Demo...' : 'Try Demo Account'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default Landing;
-export { Landing };

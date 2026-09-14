@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import API from '../../services/api';
 import FileNode from './FileNode';
 import { Plus, FolderPlus, FileCode, Search, RefreshCw } from 'lucide-react';
@@ -243,3 +243,4 @@ const FileExplorer = ({ projectId, activeFileId, onFileSelect }) => {
 
 export default FileExplorer;
 export { FileExplorer };
+

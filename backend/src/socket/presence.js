@@ -1,4 +1,4 @@
-const { cacheClient } = require('../config/redis');
+﻿const { cacheClient } = require('../config/redis');
 const events = require('./events');
 const logger = require('../utils/logger');
 
@@ -7,13 +7,14 @@ const handlePresenceEvents = (socket) => {
     try {
       const payload = {
         userId: socket.user.id,
-        userName: socket.user.name,
+        userName: socket.user.name || 'Anonymous',
         cursor
       };
 
-      const redisKey = `room:${fileId}:cursor:${socket.user.id}`;
-      // Cache cursor with short lifespan (5 minutes)
-      await cacheClient.set(redisKey, JSON.stringify(payload), { EX: 300 });
+      if (cacheClient && cacheClient.isOpen) {
+        const redisKey = `room:${fileId}:cursor:${socket.user.id}`;
+        await cacheClient.set(redisKey, JSON.stringify(payload), { EX: 300 });
+      }
 
       // Broadcast cursor changes to everyone else in this room
       socket.to(fileId).emit(events.CURSOR_MOVE, payload);
@@ -28,22 +29,22 @@ const cleanupUser = async (socket) => {
     const userId = socket.user?.id;
     if (!userId) return;
 
-    // Scan cursor states in Redis and remove them
-    const pattern = `room:*:cursor:${userId}`;
-    const keys = await cacheClient.keys(pattern);
+    if (cacheClient && cacheClient.isOpen) {
+      const pattern = `room:*:cursor:${userId}`;
+      const keys = await cacheClient.keys(pattern);
 
-    for (const key of keys) {
-      const parts = key.split(':');
-      const fileId = parts[1];
+      for (const key of keys) {
+        const parts = key.split(':');
+        const fileId = parts[1];
 
-      // Broadcast exit status to other room developers
-      socket.to(fileId).emit(events.PRESENCE_UPDATE, {
-        userId,
-        action: 'leave',
-        userName: socket.user.name
-      });
+        socket.to(fileId).emit(events.PRESENCE_UPDATE, {
+          userId,
+          action: 'leave',
+          userName: socket.user?.name || 'Anonymous'
+        });
 
-      await cacheClient.del(key);
+        await cacheClient.del(key);
+      }
     }
   } catch (err) {
     logger.error('Error cleaning up presence status for user:', err);
