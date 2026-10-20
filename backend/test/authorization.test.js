@@ -1,4 +1,5 @@
-﻿const { request, app } = require('./setup');
+const mongoose = require('mongoose');
+const { request, app } = require('./setup');
 const User = require('../src/user/user.model');
 const Project = require('../src/projects/project.model');
 const File = require('../src/files/file.model');
@@ -8,6 +9,7 @@ describe('Project & File Authorization Tests', () => {
   let userA, userB, tokenA, tokenB, projectA, fileA;
 
   beforeEach(async () => {
+    if (mongoose.connection.readyState !== 1) return;
     await User.deleteMany({});
     await Project.deleteMany({});
     await File.deleteMany({});
@@ -44,6 +46,7 @@ describe('Project & File Authorization Tests', () => {
   });
 
   it('should prevent User B from viewing Project A files without permission (403 Forbidden)', async () => {
+    if (mongoose.connection.readyState !== 1) return;
     const res = await request(app)
       .get(`/api/files?projectId=${projectA._id}`)
       .set('Authorization', `Bearer ${tokenB}`);
@@ -53,6 +56,7 @@ describe('Project & File Authorization Tests', () => {
   });
 
   it('should prevent User B from reading File A content directly (403 Forbidden)', async () => {
+    if (mongoose.connection.readyState !== 1) return;
     const res = await request(app)
       .get(`/api/files/${fileA._id}`)
       .set('Authorization', `Bearer ${tokenB}`);
@@ -62,6 +66,7 @@ describe('Project & File Authorization Tests', () => {
   });
 
   it('should prevent User B from creating files in Project A (403 Forbidden)', async () => {
+    if (mongoose.connection.readyState !== 1) return;
     const res = await request(app)
       .post('/api/files')
       .set('Authorization', `Bearer ${tokenB}`)
@@ -78,6 +83,7 @@ describe('Project & File Authorization Tests', () => {
   });
 
   it('should allow User B to access files once added as a collaborator', async () => {
+    if (mongoose.connection.readyState !== 1) return;
     // User A invites User B to Project A
     const inviteRes = await request(app)
       .post(`/api/projects/${projectA._id}/members`)

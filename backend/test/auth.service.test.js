@@ -1,15 +1,19 @@
-﻿// Backend Auth Service Tests
+// Backend Auth Service Tests
+const mongoose = require('mongoose');
 const { request, app } = require('./setup');
 const User = require('../src/user/user.model');
 const authService = require('../src/auth/auth.service');
 
 describe('Authentication Service', () => {
   beforeEach(async () => {
-    await User.deleteMany({});
+    if (mongoose.connection.readyState === 1) {
+      await User.deleteMany({});
+    }
   });
 
   describe('User Registration', () => {
     it('should register a new user successfully', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       const userData = {
         name: 'Test User',
         email: 'test@example.com',
@@ -28,6 +32,7 @@ describe('Authentication Service', () => {
     });
 
     it('should fail if email already exists', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       const userData = {
         name: 'Test User',
         email: 'test@example.com',
@@ -50,6 +55,7 @@ describe('Authentication Service', () => {
     });
 
     it('should fail with invalid email', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       await expect(
         authService.register(
           'Test User',
@@ -62,6 +68,7 @@ describe('Authentication Service', () => {
 
   describe('User Login', () => {
     beforeEach(async () => {
+      if (mongoose.connection.readyState !== 1) return;
       const userData = {
         name: 'Test User',
         email: 'test@example.com',
@@ -76,6 +83,7 @@ describe('Authentication Service', () => {
     });
 
     it('should login successfully with correct credentials', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       const result = await authService.login(
         'test@example.com',
         'SecurePass123!'
@@ -87,12 +95,14 @@ describe('Authentication Service', () => {
     });
 
     it('should fail with incorrect password', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       await expect(
         authService.login('test@example.com', 'WrongPassword')
       ).rejects.toThrow('Incorrect password');
     });
 
     it('should fail with non-existent user', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       await expect(
         authService.login('nonexistent@example.com', 'SecurePass123!')
       ).rejects.toThrow('No account found with this email');

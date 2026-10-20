@@ -1,0 +1,344 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CodeSync Distributed Collaborative Platform API",
+    "version": "1.0.0",
+    "description": "Production-grade, distributed real-time collaborative code editor API with decoupled Control Plane (REST + Optimistic Concurrency + Idempotency) and Data Plane (Yjs CRDT + Redis Streams WAL + WebSockets)."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Local Cluster Gateway (Nginx / Docker Compose)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Short-lived (15 min) JWT access token passed in Authorization header: Bearer <token>"
+      },
+      "CookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refreshToken",
+        "description": "Rotating 7-day refresh token stored in an httpOnly cookie"
+      }
+    },
+    "schemas": {
+      "ProblemDetails": {
+        "type": "object",
+        "description": "Standard RFC 7807 Problem Details representation",
+        "properties": {
+          "type": { "type": "string", "example": "https://api.codesync.dev/errors/precondition-failed" },
+          "title": { "type": "string", "example": "Precondition Failed" },
+          "status": { "type": "integer", "example": 412 },
+          "detail": { "type": "string", "example": "Resource has been modified concurrently. Please refresh and retry." },
+          "instance": { "type": "string", "example": "/api/v1/projects/507f1f77bcf86cd799439011" },
+          "requestId": { "type": "string", "example": "req_88f9104bc2" },
+          "code": { "type": "string", "example": "PRECONDITION_FAILED" }
+        },
+        "required": ["type", "title", "status", "detail", "requestId"]
+      },
+      "WsTicketResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "ticket": { "type": "string", "example": "d3b07384d113edec49eaa6238ad5ff00b1a039755f84" },
+              "expiresIn": { "type": "integer", "example": 30 },
+              "ticketType": { "type": "string", "example": "single-use" }
+            }
+          }
+        }
+      },
+      "ExecutionJob": {
+        "type": "object",
+        "properties": {
+          "executionId": { "type": "string", "example": "exec_4f9a12c8b0" },
+          "status": { "type": "string", "enum": ["queued", "running", "completed", "failed"], "example": "queued" },
+          "pollUrl": { "type": "string", "example": "/api/v1/executions/exec_4f9a12c8b0" },
+          "message": { "type": "string", "example": "Code execution job queued successfully" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Register a new developer account",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "example": "Ada Lovelace" },
+                  "email": { "type": "string", "format": "email", "example": "ada@codesync.dev" },
+                  "password": { "type": "string", "minLength": 6, "example": "secret123" }
+                },
+                "required": ["name", "email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Account created successfully" },
+          "400": { "description": "Validation error" },
+          "409": { "description": "Email already registered" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Authenticate user and issue access & refresh tokens",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "example": "ada@codesync.dev" },
+                  "password": { "type": "string", "example": "secret123" }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authenticated successfully" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "summary": "Rotate refresh token and issue fresh 15-minute access token",
+        "tags": ["Authentication"],
+        "security": [{ "CookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Tokens rotated successfully" },
+          "401": { "description": "Invalid or expired refresh token" }
+        }
+      }
+    },
+    "/api/v1/auth/ws-ticket": {
+      "post": {
+        "summary": "Issue single-use 30-second cryptographic WebSocket handshake ticket",
+        "description": "Eliminates JWT leakage into URLs, proxy logs, and access logs. Consumed immediately upon socket connection.",
+        "tags": ["Authentication"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Ticket issued",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WsTicketResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "summary": "List user workspaces with cursor pagination",
+        "tags": ["Control Plane: Projects"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "cursor", "in": "query", "schema": { "type": "string" }, "description": "Base64 pagination cursor" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Projects retrieved" }
+        }
+      },
+      "post": {
+        "summary": "Create workspace with idempotency support",
+        "tags": ["Control Plane: Projects"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "Idempotency-Key", "in": "header", "schema": { "type": "string" }, "description": "Unique UUID for retry-safe deduplication" }
+        ],
+        "responses": {
+          "201": { "description": "Project created" },
+          "409": { "description": "Request with idempotency key is already in progress" }
+        }
+      }
+    },
+    "/api/v1/projects/{id}": {
+      "get": {
+        "summary": "Retrieve project metadata with ETag",
+        "tags": ["Control Plane: Projects"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "If-None-Match", "in": "header", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Project metadata with ETag header" },
+          "304": { "description": "Not Modified" },
+          "404": { "description": "Project not found" }
+        }
+      },
+      "patch": {
+        "summary": "Update project with Optimistic Concurrency Control (If-Match)",
+        "tags": ["Control Plane: Projects"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "If-Match", "in": "header", "schema": { "type": "string" }, "description": "Current ETag of the resource" }
+        ],
+        "responses": {
+          "200": { "description": "Project updated" },
+          "412": { "description": "Precondition Failed (concurrent update conflict)", "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } }
+        }
+      }
+    },
+    "/api/v1/projects/{id}/files": {
+      "get": {
+        "summary": "List files in workspace with cursor pagination",
+        "tags": ["Control Plane: Files"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "cursor", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } }
+        ],
+        "responses": {
+          "200": { "description": "Files retrieved" }
+        }
+      },
+      "post": {
+        "summary": "Create file or folder with idempotency support",
+        "tags": ["Control Plane: Files"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "201": { "description": "File created with ETag header" },
+          "409": { "description": "In-flight idempotency conflict or path collision" }
+        }
+      }
+    },
+    "/api/v1/files/{id}": {
+      "get": {
+        "summary": "Retrieve file metadata and authoritative content with ETag",
+        "tags": ["Control Plane: Files"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "If-None-Match", "in": "header", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "File content retrieved" },
+          "304": { "description": "Not Modified" },
+          "404": { "description": "File not found" }
+        }
+      },
+      "patch": {
+        "summary": "Rename or move file with Optimistic Concurrency Control",
+        "tags": ["Control Plane: Files"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "If-Match", "in": "header", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "File updated with new ETag" },
+          "412": { "description": "Precondition Failed (concurrent edit detected)" }
+        }
+      },
+      "delete": {
+        "summary": "Delete file or directory tree",
+        "tags": ["Control Plane: Files"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "File deleted successfully" }
+        }
+      }
+    },
+    "/api/v1/executions": {
+      "post": {
+        "summary": "Enqueue asynchronous sandboxed code execution",
+        "description": "Returns 202 Accepted immediately. Execution runs off the HTTP thread. Result is delivered via WebSocket (execution:completed) or GET polling.",
+        "tags": ["Data Plane: Code Execution"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "language": { "type": "string", "enum": ["javascript", "python", "bash"], "example": "javascript" },
+                  "code": { "type": "string", "example": "console.log('Hello CodeSync Distributed!');" },
+                  "stdin": { "type": "string", "example": "" },
+                  "timeoutMs": { "type": "integer", "default": 3500 }
+                },
+                "required": ["language", "code"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Execution job accepted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ExecutionJob" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/executions/{id}": {
+      "get": {
+        "summary": "Poll execution job status and stdout/stderr output",
+        "tags": ["Data Plane: Code Execution"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Execution job status and stdout/stderr result" },
+          "404": { "description": "Execution job not found" }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "summary": "Readiness health check verifying MongoDB replica set and Redis cluster availability",
+        "tags": ["Observability & Health"],
+        "responses": {
+          "200": { "description": "System ready" },
+          "503": { "description": "Degraded state (backing services unavailable)" }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Prometheus metric scraping endpoint",
+        "tags": ["Observability & Health"],
+        "responses": {
+          "200": { "description": "Prometheus text exposition format" }
+        }
+      }
+    }
+  }
+}

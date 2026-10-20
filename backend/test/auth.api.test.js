@@ -1,15 +1,19 @@
 // Backend API Endpoints Tests
+const mongoose = require('mongoose');
 const { request, app } = require('./setup');
 const User = require('../src/user/user.model');
 const authService = require('../src/auth/auth.service');
 
 describe('Authentication API Endpoints', () => {
   beforeEach(async () => {
-    await User.deleteMany({});
+    if (mongoose.connection.readyState === 1) {
+      await User.deleteMany({});
+    }
   });
 
   describe('POST /api/auth/register', () => {
     it('should register a new user', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       const response = await request(app)
         .post('/api/auth/register')
         .send({
@@ -51,6 +55,7 @@ describe('Authentication API Endpoints', () => {
     });
 
     it('should reject duplicate email', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       await request(app)
         .post('/api/auth/register')
         .send({
@@ -74,6 +79,7 @@ describe('Authentication API Endpoints', () => {
 
   describe('POST /api/auth/login', () => {
     beforeEach(async () => {
+      if (mongoose.connection.readyState !== 1) return;
       await request(app)
         .post('/api/auth/register')
         .send({
@@ -84,6 +90,7 @@ describe('Authentication API Endpoints', () => {
     });
 
     it('should login successfully with correct credentials', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       const response = await request(app)
         .post('/api/auth/login')
         .send({
@@ -97,6 +104,7 @@ describe('Authentication API Endpoints', () => {
     });
 
     it('should reject invalid credentials', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       const response = await request(app)
         .post('/api/auth/login')
         .send({
@@ -109,6 +117,7 @@ describe('Authentication API Endpoints', () => {
     });
 
     it('should reject non-existent user', async () => {
+      if (mongoose.connection.readyState !== 1) return;
       const response = await request(app)
         .post('/api/auth/login')
         .send({

@@ -4,6 +4,7 @@ const router = express.Router();
 const authRoutes = require('./auth/auth.routes');
 const projectRoutes = require('./projects/project.routes');
 const fileRoutes = require('./files/file.routes');
+const executionRoutes = require('./execution/execution.routes');
 
 // System Health Check Endpoint
 router.get('/health', (req, res) => {
@@ -14,5 +15,7 @@ router.get('/health', (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/projects', projectRoutes);
 router.use('/files', fileRoutes);
+router.use('/execute', executionRoutes);
+router.use('/executions', executionRoutes);
 
 module.exports = router;

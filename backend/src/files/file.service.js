@@ -44,10 +44,25 @@ const deleteFile = async (fileId) => {
   await File.findByIdAndDelete(fileId);
 };
 
+const updateFileMetadata = async (fileId, { name, path }) => {
+  const file = await File.findById(fileId);
+  if (!file) {
+    const err = new Error('File not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (name !== undefined) file.name = name;
+  if (path !== undefined) file.path = path;
+  file.version = (file.version || 0) + 1;
+  await file.save();
+  return file;
+};
+
 module.exports = {
   getFilesByProject,
   getFileContent,
   createFile,
   updateFileContent,
+  updateFileMetadata,
   deleteFile
 };

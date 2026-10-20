@@ -9,26 +9,26 @@ const apiVersion = (version) => {
 
 const routerV1 = require('express').Router();
 const routerV2 = require('express').Router();
+const routes = require('../route');
 
-// V1 routes (legacy support)
+// V1 routes (standard resource-oriented REST API)
 routerV1.get('/status', (req, res) => {
   res.json({
     version: 'v1',
-    message: 'API v1 is running (legacy)',
+    message: 'API v1 is running (production-stable)',
+    features: ['cursor-pagination', 'optimistic-concurrency', 'idempotency-keys', 'rfc-7807', 'async-executions']
   });
 });
+routerV1.use('/', routes);
 
 // V2 routes (current)
-const routes = require('../route');
-
 routerV2.get('/status', (req, res) => {
   res.json({
     version: 'v2',
     message: 'API v2 is running',
-    features: ['enhanced-validation', 'better-errors', 'audit-logs'],
+    features: ['enhanced-validation', 'better-errors', 'audit-logs', 'cursor-pagination', 'optimistic-concurrency', 'idempotency-keys']
   });
 });
-
 routerV2.use('/', routes);
 
 // Support both /api/v1 and /api/v2 prefixes

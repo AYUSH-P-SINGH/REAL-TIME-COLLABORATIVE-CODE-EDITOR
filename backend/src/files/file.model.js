@@ -7,6 +7,8 @@ const fileSchema = new mongoose.Schema({
   project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
   content: { type: String, default: '' },
   version: { type: Number, default: 0 },
+  yjsSnapshot: { type: Buffer, default: null },
+  lastSnapshotSeq: { type: Number, default: 0 },
 }, { timestamps: true });
 
 // A path must be unique within a single project
