@@ -27,6 +27,42 @@ const startServer = async () => {
   server.listen(env.PORT, () => {
     logger.info(`✨ Service operating in ${env.NODE_ENV} mode on port ${env.PORT}`);
   });
+
+  // Graceful Shutdown handling (SIGTERM, SIGINT) for zero-downtime rolling deploys
+  const gracefulShutdown = async (signal) => {
+    logger.info(`🛑 Received ${signal}. Commencing graceful shutdown sequence...`);
+
+    // 1. Stop taking new HTTP / Socket requests
+    server.close(() => {
+      logger.info('🔒 HTTP & WebSocket listeners terminated.');
+    });
+
+    // 2. Stop snapshot cron worker
+    const { stopSnapshotWorker, flushAllDirtyDocuments } = require('./sync/snapshot.service');
+    stopSnapshotWorker();
+
+    // 3. Flush all in-flight dirty documents & compact WAL
+    try {
+      const flushed = await flushAllDirtyDocuments();
+      logger.info(`💾 Flushed ${flushed} dirty documents to persistent storage.`);
+    } catch (e) {
+      logger.error('Error during shutdown snapshot flush:', e);
+    }
+
+    // 4. Close database and Redis connections
+    try {
+      const { closeDB } = require('./config/db');
+      await closeDB();
+    } catch (e) {
+      // Ignore DB close errors during shutdown
+    }
+
+    logger.info('✅ Graceful shutdown completed cleanly.');
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 };
 
 // Process-level event overrides to prevent abrupt server deaths

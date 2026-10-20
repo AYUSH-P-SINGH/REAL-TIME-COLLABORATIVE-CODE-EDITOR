@@ -4,10 +4,26 @@
 # Environment files
 .env
 **/.env
+*.env.local
 
 # Build output
 dist/
 build/
 
-# Logs
+# Logs & Redis dumps
 *.log
+*.rdb
+dump.rdb
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj

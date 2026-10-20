@@ -1,6 +1,6 @@
-﻿import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../context/SocketContext';
-import { getHashColor } from '../utils/helpers';
+import { getHashColor, throttle } from '../utils/helpers';
 
 export const usePresence = (fileId, editorRef, monacoRef) => {
   const { socket } = useSocket();
@@ -38,15 +38,20 @@ export const usePresence = (fileId, editorRef, monacoRef) => {
     socket.on('cursor:move', handleCursorMove);
     socket.on('presence:update', handlePresenceUpdate);
 
-    // Listen to local cursor movement events in Monaco
-    const disposable = editor.onDidChangeCursorPosition(e => {
+    // Throttled cursor emission (~30 updates/sec) to optimize bandwidth and frame rate
+    const emitCursorMove = throttle((pos) => {
       socket.emit('cursor:move', {
         fileId,
         cursor: {
-          line: e.position.lineNumber,
-          ch: e.position.column
+          line: pos.lineNumber,
+          ch: pos.column
         }
       });
+    }, 33);
+
+    // Listen to local cursor movement events in Monaco
+    const disposable = editor.onDidChangeCursorPosition(e => {
+      emitCursorMove(e.position);
     });
 
     return () => {

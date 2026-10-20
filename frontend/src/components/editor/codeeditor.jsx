@@ -1,9 +1,13 @@
-﻿import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import MonacoEditor from '@monaco-editor/react';
+import axios from 'axios';
 import { useDocSync } from '../../hooks/useDocSync';
 import { usePresence } from '../../hooks/usepresence';
 import { useSocket } from '../../context/SocketContext';
+import { useAuth } from '../../context/authcontext';
+import { useToast } from '../../context/ToastContext';
 import EditorHeader from './editorheader';
+import ExecutionTerminal from './ExecutionTerminal';
 
 const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
   const editorRef = useRef(null);
@@ -11,8 +15,16 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
   const [editorTheme, setEditorTheme] = useState('vs-dark');
   const [cursorPos, setCursorPos] = useState({ line: 1, column: 1 });
   const { socket } = useSocket();
+  const { token } = useAuth();
+  const { addToast } = useToast();
 
-  const { handleLocalChange } = useDocSync(fileId, editorRef, monacoRef);
+  // Sandboxed Code Execution State
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [isRunningCode, setIsRunningCode] = useState(false);
+  const [executionResult, setExecutionResult] = useState(null);
+
+  // Yjs CRDT Synchronization & Presence Hooks
+  const { handleLocalChange, syncStatus } = useDocSync(fileId, editorRef, monacoRef);
   usePresence(fileId, editorRef, monacoRef);
 
   useEffect(() => {
@@ -33,6 +45,67 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
     setEditorTheme(newTheme);
     if (socket) {
       socket.emit('workspace:theme', { fileId, theme: newTheme });
+    }
+  };
+
+  // Determine normalized execution language
+  const getExecutionLanguage = () => {
+    const lang = (fileLanguage || '').toLowerCase();
+    const name = (fileName || '').toLowerCase();
+
+    if (lang === 'python' || name.endsWith('.py')) return 'python';
+    if (lang === 'shell' || lang === 'bash' || name.endsWith('.sh')) return 'bash';
+    return 'javascript';
+  };
+
+  // Run Code in Sandbox
+  const handleRunCode = async (customStdin = '') => {
+    if (!editorRef.current) return;
+    const code = editorRef.current.getValue();
+    if (!code || !code.trim()) {
+      addToast('Cannot execute an empty document.', 'error');
+      return;
+    }
+
+    const language = getExecutionLanguage();
+    setIsRunningCode(true);
+    setIsTerminalOpen(true);
+    setExecutionResult(null);
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await axios.post(
+        `${apiUrl}/execute/run`,
+        {
+          language,
+          code,
+          stdin: customStdin,
+          timeoutMs: 4000
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data && response.data.success) {
+        setExecutionResult(response.data.data);
+      } else {
+        throw new Error(response.data?.message || 'Execution failed');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Execution failed';
+      setExecutionResult({
+        stdout: '',
+        stderr: `Execution error: ${errorMsg}`,
+        exitCode: 1,
+        executionTimeMs: 0,
+        status: 'error'
+      });
+      addToast(`Execution error: ${errorMsg}`, 'error');
+    } finally {
+      setIsRunningCode(false);
     }
   };
 
@@ -117,8 +190,11 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
         fileLanguage={fileLanguage}
         editorTheme={editorTheme}
         setEditorTheme={handleThemeChange}
+        onRunCode={() => handleRunCode('')}
+        isRunningCode={isRunningCode}
+        syncStatus={syncStatus}
       />
-      
+
       <div style={{ flex: 1, width: '100%', position: 'relative' }}>
         <MonacoEditor
           height="100%"
@@ -135,14 +211,23 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
               alignItems: 'center',
               gap: '10px'
             }}>
-              Initialising Monaco Engine...
+              Initialising Monaco & Yjs CRDT Engine...
             </div>
           }
           onMount={handleEditorDidMount}
-          editorDidMount={handleEditorDidMount}
           onChange={(value, event) => handleLocalChange(value, event)}
         />
       </div>
+
+      {/* Sandboxed Execution Drawer */}
+      <ExecutionTerminal
+        isOpen={isTerminalOpen}
+        onClose={() => setIsTerminalOpen(false)}
+        isRunning={isRunningCode}
+        result={executionResult}
+        onRunCode={handleRunCode}
+        language={getExecutionLanguage()}
+      />
 
       {/* Footer Status Bar */}
       <div style={{
@@ -156,7 +241,7 @@ const CodeEditor = ({ fileId, fileName, fileLanguage }) => {
         fontSize: '0.7rem',
         color: 'hsl(var(--text-muted))'
       }}>
-        <span>UTF-8 &nbsp;|&nbsp; {fileLanguage?.toUpperCase()}</span>
+        <span>UTF-8 &nbsp;|&nbsp; {fileLanguage?.toUpperCase()} &nbsp;|&nbsp; Yjs Binary CRDT</span>
         <span>Ln {cursorPos.line}, Col {cursorPos.column}</span>
       </div>
     </div>
