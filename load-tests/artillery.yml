@@ -1,0 +1,33 @@
+config:
+  target: "ws://localhost:5000"
+  phases:
+    - duration: 30
+      arrivalRate: 10
+      name: "Warm-up Phase"
+    - duration: 60
+      arrivalRate: 25
+      rampTo: 50
+      name: "Ramp-up Load"
+    - duration: 120
+      arrivalRate: 50
+      name: "Sustained Peak Load"
+  ws:
+    subprotocols: []
+  plugins:
+    expect: {}
+
+scenarios:
+  - name: "Real-Time Collaborative Editing Session"
+    engine: ws
+    flow:
+      - connect: "{{ target }}/socket.io/?EIO=4&transport=websocket"
+      - send: "40"
+      - think: 1
+      - send: '42["room:join",{"fileId":"507f1f77bcf86cd799439011"}]'
+      - loop:
+          - send: '42["cursor:move",{"fileId":"507f1f77bcf86cd799439011","cursor":{"line":10,"ch":15}}]'
+          - think: 0.5
+          - send: '42["doc:update",{"fileId":"507f1f77bcf86cd799439011","update":[0,1,2,3],"clientTimestamp":1700000000000}]'
+          - think: 1
+        count: 15
+      - send: '42["room:leave",{"fileId":"507f1f77bcf86cd799439011"}]'
